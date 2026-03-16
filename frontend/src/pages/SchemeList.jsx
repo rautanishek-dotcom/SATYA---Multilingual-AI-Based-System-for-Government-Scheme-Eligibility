@@ -1,0 +1,406 @@
+import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Search, Filter, AlertCircle, X, Target, ClipboardList, Info, ExternalLink, ShieldCheck } from 'lucide-react';
+
+const SchemeList = () => {
+  const { t } = useTranslation();
+  const [schemes, setSchemes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [error, setError] = useState(null);
+  const [selectedScheme, setSelectedScheme] = useState(null);
+  const [selectedFilter, setSelectedFilter] = useState('All');
+  
+  const filterOptions = ['All', 'Farmer', 'Student', 'Woman', 'Senior Citizen', 'Business', 'Housing', 'Healthcare'];
+
+  useEffect(() => {
+    fetchSchemes();
+  }, []);
+
+  const fetchSchemes = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/schemes/');
+      if (!response.ok) throw new Error("Failed to fetch");
+      const data = await response.json();
+      setSchemes(data);
+    } catch (err) {
+      console.error(err);
+      setError("Could not connect to server. Ensure backend is running.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredSchemes = schemes.filter(s => {
+    const matchesSearch = s.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          s.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesFilter = selectedFilter === 'All' || 
+                          (s.target_beneficiaries?.toLowerCase().includes(selectedFilter.toLowerCase()) || 
+                           s.description?.toLowerCase().includes(selectedFilter.toLowerCase()));
+    
+    return matchesSearch && matchesFilter;
+  });
+
+  return (
+    <div className="container animate-fade-in" style={styles.container}>
+      <div style={styles.header}>
+        <h2 style={{ fontSize: '2.5rem', marginBottom: '10px' }}>Govt Schemes Directory</h2>
+        <p style={{ color: 'var(--text-muted)' }}>Browse through all available government schemes.</p>
+      </div>
+
+      <div style={styles.searchBar} className="glass-card">
+        <Search size={20} color="var(--text-muted)" style={styles.searchIcon} />
+        <input 
+          type="text" 
+          placeholder="Search by name, keyword, or category..." 
+          style={styles.searchInput}
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <select 
+          style={{...styles.searchInput, maxWidth: '150px', borderLeft: '1px solid var(--border-color)', paddingLeft: '15px', marginLeft: '10px'}}
+          value={selectedFilter}
+          onChange={(e) => setSelectedFilter(e.target.value)}
+        >
+          {filterOptions.map(opt => (
+            <option key={opt} value={opt} style={{color: '#000'}}>{opt}</option>
+          ))}
+        </select>
+      </div>
+
+      {loading ? (
+        <div style={styles.loader}>Loading schemes...</div>
+      ) : error ? (
+        <div className="glass-card" style={styles.errorCard}>
+          <AlertCircle size={32} color="var(--error-color)" />
+          <p>{error}</p>
+        </div>
+      ) : (
+        <div style={styles.grid}>
+          {filteredSchemes.map((scheme, idx) => (
+            <div key={idx} className="glass-card" style={styles.card}>
+              <div style={styles.cardContent}>
+                <h3 style={styles.cardTitle}>{scheme.name}</h3>
+                <p style={styles.cardDesc}>{scheme.description?.substring(0, 100)}...</p>
+                <div style={styles.badgeGroup}>
+                  <span style={styles.badge}>{scheme.target_beneficiaries}</span>
+                </div>
+              </div>
+              <div style={styles.cardFooter}>
+                <button 
+                   className="btn-secondary" 
+                   style={{ ...styles.cardBtn, transition: 'all 0.3s ease' }} 
+                   onClick={() => setSelectedScheme(scheme)}
+                >
+                  View Details
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {selectedScheme && (
+        <div style={styles.modalOverlay} onClick={() => setSelectedScheme(null)}>
+          <div className="glass-card animate-fade-in" style={styles.modalContent} onClick={e => e.stopPropagation()}>
+            <div style={styles.modalHeader}>
+              <div style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
+                <div style={{background: 'rgba(79, 70, 229, 0.2)', padding: '10px', borderRadius: '12px'}}>
+                  <Info size={24} color="var(--primary-color)" />
+                </div>
+                <div>
+                  <h3 style={{fontSize: '1.4rem', fontWeight: 700, color: '#fff', lineHeight: 1.2}}>{selectedScheme.name}</h3>
+                  <span style={{fontSize: '0.85rem', color: 'var(--text-muted)'}}>Government Scheme Details</span>
+                </div>
+              </div>
+              <button onClick={() => setSelectedScheme(null)} style={styles.closeBtn}><X size={24} color="var(--text-muted)" /></button>
+            </div>
+
+            <div style={styles.modalBody}>
+              <div style={styles.infoGrid}>
+                {/* Overview Section */}
+                <div style={styles.infoCard}>
+                  <div style={styles.cardHeader}>
+                    <Info size={18} color="var(--primary-color)" />
+                    <h4 style={styles.infoCardTitle}>Scheme Overview</h4>
+                  </div>
+                  <p style={styles.cardText}>{selectedScheme.description}</p>
+                </div>
+
+                {/* Beneficiaries Section */}
+                <div style={styles.infoCard}>
+                  <div style={styles.cardHeader}>
+                    <Target size={18} color="var(--secondary-color)" />
+                    <h4 style={styles.infoCardTitle}>Target Beneficiaries</h4>
+                  </div>
+                  <div style={styles.cardText}>
+                    <span style={styles.highlightBadge}>{selectedScheme.target_beneficiaries || 'Not specified'}</span>
+                  </div>
+                </div>
+
+                {/* Eligibility Section */}
+                {selectedScheme.rules && (
+                  <div style={styles.infoCard}>
+                    <div style={styles.cardHeader}>
+                      <ShieldCheck size={18} color="#a855f7" />
+                      <h4 style={styles.infoCardTitle}>Eligibility Criteria</h4>
+                    </div>
+                    <ul style={styles.detailList}>
+                      {selectedScheme.rules?.min_age && <li>Minimum Age: <strong>{selectedScheme.rules.min_age}</strong></li>}
+                      {selectedScheme.rules?.max_age && <li>Maximum Age: <strong>{selectedScheme.rules.max_age}</strong></li>}
+                      {selectedScheme.rules?.max_income && <li>Maximum Income: <strong>₹{selectedScheme.rules.max_income}</strong></li>}
+                      <li>Supported Categories: <strong>{Array.isArray(selectedScheme.rules?.allowed_categories) ? selectedScheme.rules.allowed_categories.join(', ') : 'All'}</strong></li>
+                    </ul>
+                  </div>
+                )}
+
+                {/* Application Section */}
+                {selectedScheme.application_process && (
+                  <div style={styles.infoCard}>
+                    <div style={styles.cardHeader}>
+                      <ClipboardList size={18} color="#f59e0b" />
+                      <h4 style={styles.infoCardTitle}>How to Apply</h4>
+                    </div>
+                    <p style={styles.cardText}>{selectedScheme.application_process}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Section */}
+              {selectedScheme.official_website && (
+                <div style={styles.modalFooter}>
+                  <a 
+                    href={selectedScheme.official_website} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    style={styles.applyBtn}
+                  >
+                    Go to Official Portal <ExternalLink size={18} />
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const styles = {
+  container: {
+    padding: '40px 0',
+  },
+  header: {
+    textAlign: 'center',
+    marginBottom: '40px',
+  },
+  searchBar: {
+    display: 'flex',
+    alignItems: 'center',
+    padding: '10px 20px',
+    marginBottom: '40px',
+    maxWidth: '800px',
+    margin: '0 auto 40px auto',
+  },
+  searchIcon: {
+    marginRight: '15px',
+  },
+  searchInput: {
+    flex: 1,
+    background: 'transparent',
+    border: 'none',
+    outline: 'none',
+    fontSize: '1rem',
+    color: 'var(--text-dark)',
+  },
+  filterBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '8px 15px',
+    border: 'none',
+    background: 'rgba(255, 255, 255, 0.05)',
+  },
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+    gap: '25px',
+  },
+  card: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+  },
+  cardContent: {
+    padding: '25px',
+    flex: 1,
+  },
+  cardTitle: {
+    fontSize: '1.2rem',
+    marginBottom: '10px',
+    color: 'var(--primary-color)',
+    fontWeight: 700,
+  },
+  cardDesc: {
+    color: 'var(--text-muted)',
+    fontSize: '0.95rem',
+    marginBottom: '20px',
+  },
+  badgeGroup: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '10px',
+  },
+  badge: {
+    fontSize: '0.8rem',
+    padding: '4px 10px',
+    background: 'rgba(16, 185, 129, 0.1)',
+    color: 'var(--secondary-color)',
+    borderRadius: '100px',
+    fontWeight: 500,
+  },
+  cardFooter: {
+    padding: '15px 25px',
+    borderTop: '1px solid var(--border-color)',
+  },
+  cardBtn: {
+    width: '100%',
+    padding: '10px',
+    textAlign: 'center',
+  },
+  loader: {
+    textAlign: 'center',
+    fontSize: '1.2rem',
+    color: 'var(--text-muted)',
+    padding: '40px',
+  },
+  errorCard: {
+    padding: '40px',
+    textAlign: 'center',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '15px',
+    border: '1px solid var(--error-color)',
+    maxWidth: '500px',
+    margin: '0 auto',
+  },
+  modalOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
+    zIndex: 2000,
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    padding: '40px 20px',
+  },
+  modalContent: {
+    backgroundColor: '#0f172a',
+    color: '#f8fafc',
+    padding: '0',
+    borderRadius: '24px',
+    width: '750px',
+    maxWidth: '95vw',
+    maxHeight: '90vh',
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+    border: '1px solid rgba(255,255,255,0.1)',
+    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+  },
+  modalHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '25px 30px',
+    borderBottom: '1px solid rgba(255,255,255,0.05)',
+    background: 'rgba(255, 255, 255, 0.02)',
+  },
+  modalBody: {
+    padding: '30px',
+    overflowY: 'auto',
+    flex: 1,
+    scrollbarWidth: 'thin',
+    scrollbarColor: 'var(--primary-color) rgba(255,255,255,0.05)',
+  },
+  infoGrid: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '20px',
+  },
+  infoCard: {
+    background: 'rgba(255, 255, 255, 0.03)',
+    padding: '20px',
+    borderRadius: '16px',
+    border: '1px solid rgba(255, 255, 255, 0.05)',
+  },
+  cardHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    marginBottom: '12px',
+  },
+  infoCardTitle: {
+    fontSize: '1rem',
+    fontWeight: 600,
+    color: '#fff',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  },
+  cardText: {
+    color: '#cbd5e1',
+    lineHeight: '1.6',
+    fontSize: '0.95rem',
+  },
+  highlightBadge: {
+    display: 'inline-block',
+    padding: '6px 14px',
+    background: 'rgba(16, 185, 129, 0.1)',
+    color: 'var(--secondary-color)',
+    borderRadius: '8px',
+    fontWeight: 600,
+    fontSize: '0.9rem',
+  },
+  detailList: {
+    listStyle: 'none',
+    padding: 0,
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+    gap: '10px',
+  },
+  modalFooter: {
+    padding: '20px 30px',
+    borderTop: '1px solid rgba(255,255,255,0.05)',
+    background: 'rgba(255, 255, 255, 0.02)',
+  },
+  applyBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '10px',
+    width: '100%',
+    padding: '14px',
+    background: 'linear-gradient(135deg, var(--primary-color), var(--primary-hover))',
+    color: '#fff',
+    borderRadius: '12px',
+    fontWeight: 600,
+    fontSize: '1rem',
+    transition: 'transform 0.2s',
+  },
+  closeBtn: {
+    background: 'transparent',
+    border: 'none',
+    cursor: 'pointer',
+    padding: '4px',
+    display: 'flex',
+  }
+};
+
+export default SchemeList;
