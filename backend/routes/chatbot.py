@@ -134,16 +134,20 @@ def chat():
         return jsonify({"response": msg, "suggestions": get_localized_suggestions(target_lang)}), 200
 
     english_query = translate_to_english(query) if target_lang != 'en' else query
-    eq_lower = english_query.lower().strip()
     
     db = get_db()
     faqs = list(db.faqs.find({}, {"_id": 0}))
 
-    # Category Hit
+    # Punctuation cleaning
+    eq_lower = english_query.lower().replace("?", "").replace(".", "").replace(",", "")
+    
+    # Category detection (Improved: checks each word)
     matched_cat = None
-    for k, v in CATEGORY_MAP.items():
-        if k == eq_lower or (len(eq_lower.split()) == 1 and k in eq_lower):
-            matched_cat = v
+    query_words = eq_lower.split()
+    for word in query_words:
+        word = word.strip()
+        if word in CATEGORY_MAP:
+            matched_cat = CATEGORY_MAP[word]
             break
             
     if matched_cat:
