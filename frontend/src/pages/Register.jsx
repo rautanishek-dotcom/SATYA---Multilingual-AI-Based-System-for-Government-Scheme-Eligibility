@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Mail, Lock, User, UserPlus } from 'lucide-react';
 
 const Register = () => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'citizen' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -28,10 +30,10 @@ const Register = () => {
       if (response.ok) {
         navigate('/login');
       } else {
-        setError(data.error || 'Registration failed');
+        setError(data.error || t('RegistrationFailed', 'Registration failed'));
       }
     } catch (err) {
-      setError('Cannot connect to server');
+      setError(t('ConnectionError', 'Cannot connect to server'));
     } finally {
       setLoading(false);
     }
@@ -41,15 +43,15 @@ const Register = () => {
     <div className="animate-fade-in" style={styles.container}>
       <div className="glass-card" style={styles.card}>
         <div style={styles.header}>
-          <h2 style={{ fontSize: '2rem', marginBottom: '10px' }}>Create Account</h2>
-          <p style={{ color: 'var(--text-muted)' }}>Join SATYA and discover your benefits</p>
+          <h2 style={{ fontSize: '2rem', marginBottom: '10px' }}>{t('CreateAccount')}</h2>
+          <p style={{ color: 'var(--text-muted)' }}>{t('RegisterSubtitle')}</p>
         </div>
 
         {error && <div style={styles.errorBanner}>{error}</div>}
 
         <form onSubmit={handleSubmit} style={styles.form}>
           <div style={styles.inputGroup}>
-            <label>Full Name</label>
+            <label>{t('Name')}</label>
             <div style={styles.inputWrapper}>
               <User size={18} style={styles.icon} color="var(--text-muted)" />
               <input 
@@ -65,7 +67,7 @@ const Register = () => {
           </div>
 
           <div style={styles.inputGroup}>
-            <label>Email Address</label>
+            <label>{t('EmailAddress')}</label>
             <div style={styles.inputWrapper}>
               <Mail size={18} style={styles.icon} color="var(--text-muted)" />
               <input 
@@ -75,13 +77,13 @@ const Register = () => {
                 onChange={handleChange} 
                 required 
                 style={styles.input} 
-                placeholder="you@example.com"
+                placeholder={t('EmailPlaceholder')}
               />
             </div>
           </div>
 
           <div style={styles.inputGroup}>
-            <label>Password</label>
+            <label>{t('Password')}</label>
             <div style={styles.inputWrapper}>
               <Lock size={18} style={styles.icon} color="var(--text-muted)" />
               <input 
@@ -98,12 +100,12 @@ const Register = () => {
           </div>
 
           <button type="submit" className="btn-primary" style={styles.submitBtn} disabled={loading}>
-            {loading ? 'Creating Account...' : <><UserPlus size={18} /> Register</>}
+            {loading ? t('CreatingAccount') : <><UserPlus size={18} /> {t('Register')}</>}
           </button>
         </form>
 
         <p style={styles.footerText}>
-          Already have an account? <Link to="/login" style={styles.link}>Login here</Link>
+          {t('AlreadyAccount')} <Link to="/login" style={styles.link}>{t('LoginHere')}</Link>
         </p>
       </div>
     </div>

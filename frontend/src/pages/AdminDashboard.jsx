@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import { PlusCircle, Database, Users } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const AdminDashboard = () => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('schemes');
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     target_beneficiaries: '',
     official_website: '',
-    application_process: ''
+    application_process: '',
+    state: 'All India'
   });
   const [status, setStatus] = useState('');
 
@@ -18,7 +21,7 @@ const AdminDashboard = () => {
 
   const handleAddScheme = async (e) => {
     e.preventDefault();
-    setStatus('Loading...');
+    setStatus(t('Loading', 'Loading...'));
     try {
       const response = await fetch('http://localhost:5000/api/schemes/add', {
         method: 'POST',
@@ -26,19 +29,19 @@ const AdminDashboard = () => {
         body: JSON.stringify(formData)
       });
       if (response.ok) {
-        setStatus('Scheme added successfully!');
-        setFormData({ name: '', description: '', target_beneficiaries: '', official_website: '', application_process: '' });
+        setStatus(t('SchemeAddedSuccess', 'Scheme added successfully!'));
+        setFormData({ name: '', description: '', target_beneficiaries: '', official_website: '', application_process: '', state: 'All India' });
       } else {
-        setStatus('Failed to add scheme.');
+        setStatus(t('SchemeAddedFailed', 'Failed to add scheme.'));
       }
     } catch (err) {
-      setStatus('Error connecting to server.');
+      setStatus(t('ErrorConnecting', 'Error connecting to server.'));
     }
   };
 
   return (
     <div className="container animate-fade-in" style={styles.container}>
-      <h2 style={styles.title}>Admin Panel</h2>
+      <h2 style={styles.title}>{t('AdminPanel', 'Admin Panel')}</h2>
 
       <div style={styles.tabContainer}>
         <button 
@@ -46,52 +49,68 @@ const AdminDashboard = () => {
           onClick={() => setActiveTab('schemes')}
           style={styles.tabBtn}
         >
-          <Database size={18} /> Manage Schemes
+          <Database size={18} /> {t('ManageSchemes', 'Manage Schemes')}
         </button>
         <button 
           className={activeTab === 'users' ? 'btn-primary' : 'btn-secondary'} 
           onClick={() => setActiveTab('users')}
           style={styles.tabBtn}
         >
-          <Users size={18} /> Manage Users
+          <Users size={18} /> {t('ManageUsers', 'Manage Users')}
         </button>
       </div>
 
       {activeTab === 'schemes' && (
         <div className="glass-card" style={styles.card}>
-          <h3 style={styles.cardTitle}><PlusCircle size={20} color="var(--primary-color)" /> Add New Scheme</h3>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>Populate the database with a new welfare program.</p>
+          <h3 style={styles.cardTitle}><PlusCircle size={20} color="var(--primary-color)" /> {t('AddNewScheme', 'Add New Scheme')}</h3>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>{t('PopulateDatabaseDesc', 'Populate the database with a new welfare program.')}</p>
           
-          {status && <div style={{ marginBottom: '15px', color: status.includes('success') ? 'var(--secondary-color)' : 'var(--error-color)' }}>{status}</div>}
+          {status && <div style={{ marginBottom: '15px', color: status.includes('success') || status.includes('यशस्वी') ? 'var(--secondary-color)' : 'var(--error-color)' }}>{status}</div>}
           
           <form onSubmit={handleAddScheme} style={styles.form}>
             <div style={styles.inputGroup}>
-              <label>Scheme Name</label>
+              <label>{t('SchemeName', 'Scheme Name')}</label>
               <input type="text" name="name" value={formData.name} onChange={handleChange} required style={styles.input} />
             </div>
 
             <div style={styles.inputGroup}>
-              <label>Description</label>
+              <label>{t('Description', 'Description')}</label>
               <textarea name="description" value={formData.description} onChange={handleChange} required style={{ ...styles.input, minHeight: '100px' }}></textarea>
             </div>
 
             <div style={styles.row}>
               <div style={styles.inputGroup}>
-                <label>Target Beneficiaries</label>
+                <label>{t('TargetBeneficiaries', 'Target Beneficiaries')}</label>
                 <input type="text" name="target_beneficiaries" value={formData.target_beneficiaries} onChange={handleChange} required style={styles.input} />
               </div>
               <div style={styles.inputGroup}>
-                <label>Official Website URL</label>
+                <label>{t('OfficialWebsiteURL', 'Official Website URL')}</label>
                 <input type="url" name="official_website" value={formData.official_website} onChange={handleChange} required style={styles.input} />
               </div>
             </div>
 
             <div style={styles.inputGroup}>
-              <label>Application Process</label>
+              <label>{t('ApplicationProcess', 'Application Process')}</label>
               <textarea name="application_process" value={formData.application_process} onChange={handleChange} required style={{ ...styles.input, minHeight: '80px' }}></textarea>
             </div>
 
-            <button type="submit" className="btn-primary" style={styles.submitBtn}>Save Scheme to Database</button>
+            <div style={styles.inputGroup}>
+              <label>{t('State', 'State')}</label>
+              <select name="state" value={formData.state} onChange={handleChange} style={styles.input}>
+                <option value="All India">All India (Central)</option>
+                <option value="Maharashtra">Maharashtra</option>
+                <option value="Tamil Nadu">Tamil Nadu</option>
+                <option value="Karnataka">Karnataka</option>
+                <option value="Gujarat">Gujarat</option>
+                <option value="Uttar Pradesh">Uttar Pradesh</option>
+                <option value="West Bengal">West Bengal</option>
+                <option value="Kerala">Kerala</option>
+                <option value="Punjab">Punjab</option>
+                <option value="Rajasthan">Rajasthan</option>
+              </select>
+            </div>
+
+            <button type="submit" className="btn-primary" style={styles.submitBtn}>{t('SaveSchemeBtn', 'Save Scheme to Database')}</button>
           </form>
         </div>
       )}
@@ -99,8 +118,8 @@ const AdminDashboard = () => {
       {activeTab === 'users' && (
         <div className="glass-card" style={{ ...styles.card, textAlign: 'center', padding: '60px' }}>
           <Users size={40} color="var(--text-muted)" style={{ marginBottom: '20px' }} />
-          <h3>User Management</h3>
-          <p style={{ color: 'var(--text-muted)' }}>This section is reserved for future implementation of user analytics and management.</p>
+          <h3>{t('UserManagement', 'User Management')}</h3>
+          <p style={{ color: 'var(--text-muted)' }}>{t('UserManagementDesc', 'This section is reserved for future implementation of user analytics and management.')}</p>
         </div>
       )}
     </div>

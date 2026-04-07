@@ -1,43 +1,104 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, X, Send, Minimize2 } from 'lucide-react';
+import { MessageSquare, X, Send } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const FloatingChatbot = () => {
+  const { t, i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { text: "Hello! I am SATYA, your Govt Schemes Assistant. How can I help you today?", isBot: true }
+    { text: t('ChatWelcome'), isBot: true }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedLang, setSelectedLang] = useState('auto');
+  const [suggestions, setSuggestions] = useState([]);
+  const [welcomeMessage, setWelcomeMessage] = useState('Hello! I am SATYA, your Govt Schemes Assistant. How can I help you today?');
   const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    // Fetch localized initial suggestions and greeting
+    const fetchLocalization = async () => {
+      try {
+        const langParam = selectedLang === 'auto' ? '' : `?lang=${selectedLang}`;
+        const response = await fetch(`http://localhost:5000/api/chatbot/suggestions${langParam}`);
+        const data = await response.json();
+        if (data.suggestions) setSuggestions(data.suggestions);
+        if (data.welcome_message) setWelcomeMessage(data.welcome_message);
+      } catch (err) {
+        console.error('Localization fetch error:', err);
+      }
+    };
+    fetchLocalization();
+  }, [selectedLang]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // Language sync: Fetch new suggestions and update greeting when language changes
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      try {
+        const langCode = i18n.language || 'en';
+        const res = await fetch(`http://localhost:5000/api/chatbot/suggestions?lang=${langCode}`);
+        const data = await res.json();
+        if (data.suggestions) {
+          setSuggestions(data.suggestions);
+        }
+      } catch (error) {
+        console.error("Failed to fetch suggestions:", error);
+      }
+    };
+
+    fetchSuggestions();
+
+    // If chat is fresh (only greeting), update the greeting to current language
+    setMessages(prev => {
+      if (prev.length === 1 && prev[0].isBot) {
+        return [{ text: t('ChatWelcome'), isBot: true }];
+      }
+      return prev;
+    });
+  }, [i18n.language, t]);
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
+  const handleSend = async (customQuery) => {
+    const userMsg = (customQuery || input).trim();
+    if (!userMsg) return;
     
-    const userMsg = input.trim();
     setMessages(prev => [...prev, { text: userMsg, isBot: false }]);
     setInput('');
     setIsLoading(true);
+    setSuggestions([]);
 
     try {
-      const response = await fetch('http://localhost:5000/api/chatbot/', {
+      const response = await fetch('http://localhost:5000/api/chatbot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: userMsg })
+        body: JSON.stringify({ 
+          query: userMsg,
+          lang: selectedLang === 'auto' ? null : selectedLang // null for auto-detect
+        })
       });
       const data = await response.json();
       
       setMessages(prev => [...prev, { text: data.response, isBot: true }]);
+      
+      // Update suggestions if returned
+      if (data.suggestions && data.suggestions.length > 0) {
+        setSuggestions(data.suggestions);
+      }
     } catch (error) {
       console.error(error);
-      setMessages(prev => [...prev, { text: "Sorry, I am having trouble connecting to the server.", isBot: true }]);
+      setMessages(prev => [...prev, { text: t('ChatError', "Sorry, I am having trouble connecting to the server."), isBot: true }]);
+      setSuggestions([
+        "What is SATYA?",
+        "How to check my eligibility?",
+        "What schemes are available for farmers?",
+      ]);
     } finally {
       setIsLoading(false);
     }
@@ -48,6 +109,23 @@ const FloatingChatbot = () => {
       handleSend();
     }
   };
+
+  const handleSuggestionClick = (question) => {
+    handleSend(question);
+  };
+
+  const languages = [
+    { code: 'auto', name: 'Auto-Detect' },
+    { code: 'en', name: 'English' },
+    { code: 'hi', name: 'Hindi (हिंदी)' },
+    { code: 'ta', name: 'Tamil (தமிழ்)' },
+    { code: 'te', name: 'Telugu (తెలుగు)' },
+    { code: 'kn', name: 'Kannada (ಕನ್ನಡ)' },
+    { code: 'mr', name: 'Marathi (मराठी)' },
+    { code: 'bn', name: 'Bengali (বাংলা)' },
+    { code: 'gu', name: 'Gujarati (ગુજરાતી)' },
+    { code: 'ml', name: 'Malayalam (മലയാളം)' },
+  ];
 
   return (
     <div style={styles.wrapper}>
@@ -67,16 +145,32 @@ const FloatingChatbot = () => {
                 <rect width="900" height="200" fill="#FF9933"/>
                 <rect y="200" width="900" height="200" fill="#FFFFFF"/>
                 <rect y="400" width="900" height="200" fill="#138808"/>
-                <circle cx="450" cy="300" r="92.5" fill="none" stroke="#000080" stroke-width="6.5"/>
+                <circle cx="450" cy="300" r="92.5" fill="none" stroke="#000080" strokeWidth="6.5"/>
               </svg>
-              <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-light)' }}>SATYA Assistant</h3>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-light)' }}>{t('ChatAssistant', 'SATYA Assistant')}</h3>
             </div>
-            <button style={styles.closeBtn} onClick={() => setIsOpen(false)}>
-              <X size={20} color="var(--text-muted)" />
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <select 
+                value={selectedLang} 
+                onChange={(e) => setSelectedLang(e.target.value)}
+                style={styles.langSelect}
+              >
+                {languages.map(l => (
+                  <option key={l.code} value={l.code}>{l.name}</option>
+                ))}
+              </select>
+              <button style={styles.closeBtn} onClick={() => setIsOpen(false)}>
+                <X size={20} color="var(--text-muted)" />
+              </button>
+            </div>
           </div>
 
           <div style={styles.messageArea}>
+            <div style={styles.botMessageContainer}>
+              <div style={styles.botMessage}>
+                {welcomeMessage}
+              </div>
+            </div>
             {messages.map((msg, idx) => (
               <div key={idx} style={{ 
                 ...styles.messageBubble, 
@@ -87,7 +181,7 @@ const FloatingChatbot = () => {
                 color: msg.isBot ? 'var(--text-light)' : 'white',
                 border: msg.isBot ? '1px solid var(--border-color)' : 'none'
               }}>
-                {msg.text.split('\\n').map((line, i) => (
+                {msg.text.split('\n').map((line, i) => (
                   <span key={i} style={{ display: 'block' }}>{line}</span>
                 ))}
               </div>
@@ -99,6 +193,35 @@ const FloatingChatbot = () => {
                  </div>
               </div>
             )}
+
+            {/* Suggestion Chips */}
+            {suggestions.length > 0 && !isLoading && (
+              <div style={styles.suggestionsContainer}>
+                <span style={styles.suggestionsLabel}>💡 Suggested Questions:</span>
+                <div style={styles.suggestionsGrid}>
+                  {suggestions.map((q, idx) => (
+                    <button
+                      key={idx}
+                      style={styles.suggestionChip}
+                      onClick={() => handleSuggestionClick(q)}
+                      onMouseEnter={(e) => {
+                        e.target.style.background = 'rgba(79, 70, 229, 0.25)';
+                        e.target.style.borderColor = 'var(--primary-color)';
+                        e.target.style.color = '#fff';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.background = 'rgba(79, 70, 229, 0.08)';
+                        e.target.style.borderColor = 'rgba(79, 70, 229, 0.3)';
+                        e.target.style.color = 'var(--text-muted)';
+                      }}
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div ref={messagesEndRef} />
           </div>
 
@@ -108,10 +231,10 @@ const FloatingChatbot = () => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Ask about schemes..." 
+              placeholder={t('ChatPlaceholder', 'Ask about schemes...')} 
               style={styles.input}
             />
-            <button onClick={handleSend} className="btn-primary" style={styles.sendBtn} disabled={isLoading}>
+            <button onClick={() => handleSend()} className="btn-primary" style={styles.sendBtn} disabled={isLoading}>
               <Send size={18} color="white" />
             </button>
           </div>
@@ -138,8 +261,8 @@ const styles = {
     boxShadow: '0 10px 25px rgba(79, 70, 229, 0.5)',
   },
   chatWindow: {
-    width: '350px',
-    height: '500px',
+    width: '380px',
+    height: '550px',
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
@@ -153,28 +276,38 @@ const styles = {
     borderBottom: '1px solid var(--border-color)',
     background: 'var(--surface-dark)',
   },
+  langSelect: {
+    padding: '4px 8px',
+    borderRadius: '4px',
+    background: 'rgba(255, 255, 255, 0.1)',
+    border: '1px solid var(--border-color)',
+    color: 'var(--text-light)',
+    fontSize: '0.75rem',
+    outline: 'none',
+    cursor: 'pointer',
+  },
   closeBtn: {
     background: 'transparent',
     padding: '5px',
   },
   messageArea: {
     flex: 1,
-    padding: '20px',
+    padding: '15px',
     overflowY: 'auto',
     display: 'flex',
     flexDirection: 'column',
-    gap: '15px',
+    gap: '12px',
   },
   messageBubble: {
     padding: '12px 16px',
     borderRadius: '15px',
     maxWidth: '85%',
-    fontSize: '0.95rem',
-    lineHeight: 1.4,
+    fontSize: '0.9rem',
+    lineHeight: 1.5,
     wordBreak: 'break-word',
   },
   inputArea: {
-    padding: '15px',
+    padding: '12px 15px',
     borderTop: '1px solid var(--border-color)',
     display: 'flex',
     gap: '10px',
@@ -188,6 +321,7 @@ const styles = {
     background: 'rgba(0, 0, 0, 0.2)',
     color: 'var(--text-light)',
     outline: 'none',
+    fontSize: '0.9rem',
   },
   sendBtn: {
     width: '42px',
@@ -202,9 +336,36 @@ const styles = {
     display: 'flex',
     gap: '3px',
     fontWeight: 'bold',
-  }
+  },
+  suggestionsContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+    padding: '5px 0',
+  },
+  suggestionsLabel: {
+    fontSize: '0.75rem',
+    color: 'var(--text-muted)',
+    fontWeight: 600,
+    letterSpacing: '0.03em',
+  },
+  suggestionsGrid: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '6px',
+  },
+  suggestionChip: {
+    padding: '6px 12px',
+    borderRadius: '20px',
+    border: '1px solid rgba(79, 70, 229, 0.3)',
+    background: 'rgba(79, 70, 229, 0.08)',
+    color: 'var(--text-muted)',
+    fontSize: '0.75rem',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    textAlign: 'left',
+    lineHeight: 1.3,
+  },
 };
-
-// Simple global keyframes for typing animation could be added here
 
 export default FloatingChatbot;

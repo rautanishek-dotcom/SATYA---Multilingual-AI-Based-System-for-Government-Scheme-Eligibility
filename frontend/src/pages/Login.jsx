@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Mail, Lock, LogIn } from 'lucide-react';
 
 const Login = () => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -30,10 +32,10 @@ const Login = () => {
         localStorage.setItem('satya_user', JSON.stringify(data.user));
         navigate('/');
       } else {
-        setError(data.error || 'Login failed');
+        setError(data.error || t('LoginFailed', 'Login failed'));
       }
     } catch (err) {
-      setError('Cannot connect to server');
+      setError(t('ConnectionError', 'Cannot connect to server'));
     } finally {
       setLoading(false);
     }
@@ -43,15 +45,15 @@ const Login = () => {
     <div className="animate-fade-in" style={styles.container}>
       <div className="glass-card" style={styles.card}>
         <div style={styles.header}>
-          <h2 style={{ fontSize: '2rem', marginBottom: '10px' }}>Welcome Back</h2>
-          <p style={{ color: 'var(--text-muted)' }}>Login to access your personalized schemes</p>
+          <h2 style={{ fontSize: '2rem', marginBottom: '10px' }}>{t('WelcomeBack')}</h2>
+          <p style={{ color: 'var(--text-muted)' }}>{t('LoginSubtitle')}</p>
         </div>
 
         {error && <div style={styles.errorBanner}>{error}</div>}
 
         <form onSubmit={handleSubmit} style={styles.form}>
           <div style={styles.inputGroup}>
-            <label>Email Address</label>
+            <label>{t('EmailAddress')}</label>
             <div style={styles.inputWrapper}>
               <Mail size={18} style={styles.icon} color="var(--text-muted)" />
               <input 
@@ -61,13 +63,13 @@ const Login = () => {
                 onChange={handleChange} 
                 required 
                 style={styles.input} 
-                placeholder="you@example.com"
+                placeholder={t('EmailPlaceholder')}
               />
             </div>
           </div>
 
           <div style={styles.inputGroup}>
-            <label>Password</label>
+            <label>{t('Password')}</label>
             <div style={styles.inputWrapper}>
               <Lock size={18} style={styles.icon} color="var(--text-muted)" />
               <input 
@@ -83,12 +85,12 @@ const Login = () => {
           </div>
 
           <button type="submit" className="btn-primary" style={styles.submitBtn} disabled={loading}>
-            {loading ? 'Authenticating...' : <><LogIn size={18} /> Login</>}
+            {loading ? t('Authenticating') : <><LogIn size={18} /> {t('Login')}</>}
           </button>
         </form>
 
         <p style={styles.footerText}>
-          Don't have an account? <Link to="/register" style={styles.link}>Sign up securely</Link>
+          {t('NoAccount')} <Link to="/register" style={styles.link}>{t('SignUpSecurely')}</Link>
         </p>
       </div>
     </div>

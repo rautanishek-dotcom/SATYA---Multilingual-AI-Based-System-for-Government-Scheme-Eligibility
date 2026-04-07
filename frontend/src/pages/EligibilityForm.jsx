@@ -7,7 +7,7 @@ const EligibilityForm = () => {
   const { t } = useTranslation();
   const [formData, setFormData] = useState({
     name: '',
-    age: '',
+    dob: '',
     gender: '',
     state: '',
     district: '',
@@ -31,6 +31,12 @@ const EligibilityForm = () => {
         const userObj = JSON.parse(userStr);
         if (userObj && userObj.id) {
           setUserId(userObj.id);
+          
+          // Pre-fill data removed per user request
+          
+          if (window.satya_aadhaar_verified || userObj.aadhaar_verified) {
+            setIsVerified(true);
+          }
         }
       }
     } catch (err) {
@@ -69,7 +75,7 @@ const EligibilityForm = () => {
     <div className="container animate-fade-in" style={styles.container}>
       <div style={styles.header}>
         <h2 style={{ fontSize: '2.5rem', marginBottom: '10px' }}>{t('Profile')}</h2>
-        <p style={{ color: 'var(--text-muted)' }}>Fill in your details accurately to find government schemes you are eligible for.</p>
+        <p style={{ color: 'var(--text-muted)' }}>{t('ProfileSubtitle', 'Fill in your details accurately to find government schemes you are eligible for.')}</p>
       </div>
 
       <div style={styles.layout}>
@@ -83,16 +89,16 @@ const EligibilityForm = () => {
 
             <div style={styles.row}>
               <div style={styles.inputGroup}>
-                <label>{t('Age')}</label>
-                <input type="number" name="age" value={formData.age} onChange={handleChange} required style={styles.input} min="0" />
+                <label>{t('DOB', 'Date of Birth')}</label>
+                <input type="date" name="dob" value={formData.dob} onChange={handleChange} required style={styles.input} />
               </div>
               <div style={styles.inputGroup}>
                 <label>{t('Gender')}</label>
                 <select name="gender" value={formData.gender} onChange={handleChange} style={styles.input} required>
-                  <option value="" disabled style={{color: '#000'}}>Select Gender</option>
-                  <option value="male" style={{color: '#000'}}>Male</option>
-                  <option value="female" style={{color: '#000'}}>Female</option>
-                  <option value="other" style={{color: '#000'}}>Other</option>
+                  <option value="" disabled style={{color: '#000'}}>{t('SelectGender')}</option>
+                  <option value="male" style={{color: '#000'}}>{t('Male')}</option>
+                  <option value="female" style={{color: '#000'}}>{t('Female')}</option>
+                  <option value="other" style={{color: '#000'}}>{t('Other')}</option>
                 </select>
               </div>
             </div>
@@ -100,7 +106,19 @@ const EligibilityForm = () => {
             <div style={styles.row}>
               <div style={styles.inputGroup}>
                 <label>{t('State')}</label>
-                <input type="text" name="state" value={formData.state} onChange={handleChange} required style={styles.input} />
+                <select name="state" value={formData.state} onChange={handleChange} required style={styles.input}>
+                  <option value="" disabled style={{color: '#000'}}>{t('SelectState', 'Select State')}</option>
+                  {[
+                    'All India', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat', 
+                    'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh', 'Maharashtra', 
+                    'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 
+                    'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal', 'Andaman and Nicobar Islands', 
+                    'Chandigarh', 'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Jammu and Kashmir', 'Ladakh', 
+                    'Lakshadweep', 'Puducherry'
+                  ].map(st => (
+                    <option key={st} value={st} style={{color: '#000'}}>{t(st.replace(/\s/g, ''), st)}</option>
+                  ))}
+                </select>
               </div>
               <div style={styles.inputGroup}>
                 <label>{t('District')}</label>
@@ -117,22 +135,22 @@ const EligibilityForm = () => {
               <div style={styles.inputGroup}>
                 <label>{t('Category')}</label>
                 <select name="category" value={formData.category} onChange={handleChange} style={styles.input}>
-                  <option value="general" style={{color: '#000'}}>General</option>
-                  <option value="obc" style={{color: '#000'}}>OBC</option>
-                  <option value="sc" style={{color: '#000'}}>SC</option>
-                  <option value="st" style={{color: '#000'}}>ST</option>
+                  <option value="general" style={{color: '#000'}}>{t('General')}</option>
+                  <option value="obc" style={{color: '#000'}}>{t('OBC')}</option>
+                  <option value="sc" style={{color: '#000'}}>{t('SC')}</option>
+                  <option value="st" style={{color: '#000'}}>{t('ST')}</option>
                 </select>
               </div>
               <div style={styles.inputGroup}>
                 <label>{t('SpecialCategory')}</label>
                 <select name="special_category" value={formData.special_category} onChange={handleChange} style={styles.input}>
-                  <option value="none" style={{color: '#000'}}>None</option>
-                  <option value="woman" style={{color: '#000'}}>Woman</option>
-                  <option value="farmer" style={{color: '#000'}}>Farmer</option>
-                  <option value="student" style={{color: '#000'}}>Student</option>
-                  <option value="entrepreneur" style={{color: '#000'}}>Entrepreneur</option>
-                  <option value="senior_citizen" style={{color: '#000'}}>Senior Citizen</option>
-                  <option value="disabled" style={{color: '#000'}}>Disabled</option>
+                  <option value="none" style={{color: '#000'}}>{t('None')}</option>
+                  <option value="woman" style={{color: '#000'}}>{t('Woman')}</option>
+                  <option value="farmer" style={{color: '#000'}}>{t('Farmer')}</option>
+                  <option value="student" style={{color: '#000'}}>{t('Student')}</option>
+                  <option value="entrepreneur" style={{color: '#000'}}>{t('Entrepreneur')}</option>
+                  <option value="senior_citizen" style={{color: '#000'}}>{t('SeniorCitizen')}</option>
+                  <option value="disabled" style={{color: '#000'}}>{t('Disabled')}</option>
                 </select>
               </div>
             </div>
@@ -143,7 +161,7 @@ const EligibilityForm = () => {
             </div>
 
             <button type="submit" className="btn-primary" style={styles.submitBtn} disabled={loading}>
-              {loading ? 'Analyzing...' : t('Submit')} <ChevronRight size={18} />
+              {loading ? t('Analyzing') : t('Submit')} <ChevronRight size={18} />
             </button>
           </form>
         </div>
@@ -159,9 +177,9 @@ const EligibilityForm = () => {
           ) : results === null ? (
              <div className="glass-card" style={styles.placeholderCard}>
                 <Search size={48} color="var(--text-muted)" style={{ marginBottom: '20px' }} />
-                <h3>Waiting for your profile</h3>
+                <h3>{t('WaitingProfile')}</h3>
                 <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '10px' }}>
-                  Submit the form to see your eligible schemes here.
+                  {t('WaitingProfileDesc')}
                 </p>
              </div>
           ) : isVerified ? (
@@ -173,13 +191,26 @@ const EligibilityForm = () => {
               
               {results.length === 0 ? (
                 <div className="glass-card" style={{ padding: '30px', textAlign: 'center' }}>
-                  <p>We couldn't find exact matches. Try updating your profile or browsing all schemes.</p>
+                  <p>{t('NoMatches')}</p>
                 </div>
               ) : (
                 <div style={styles.schemeList}>
                   {results.map((scheme, idx) => (
                     <div key={idx} className="glass-card" style={styles.schemeCard}>
-                      <h4 style={styles.schemeTitle}>{scheme.name}</h4>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                        <h4 style={{ ...styles.schemeTitle, margin: 0 }}>{scheme.name}</h4>
+                        <span style={{
+                          padding: '4px 10px',
+                          borderRadius: '20px',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          background: scheme.state === 'All India' ? 'rgba(79, 70, 229, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                          color: scheme.state === 'All India' ? 'var(--primary-color)' : 'var(--secondary-color)',
+                          border: `1px solid ${scheme.state === 'All India' ? 'rgba(79, 70, 229, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`
+                        }}>
+                          {scheme.state === 'All India' ? t('CentralScheme', 'Central Scheme') : t('StateScheme', 'State Scheme')}
+                        </span>
+                      </div>
                       <p style={styles.schemeDesc}>{scheme.description}</p>
                       <div style={{ display: 'flex', gap: '10px' }}>
                         <button 
@@ -187,11 +218,11 @@ const EligibilityForm = () => {
                           className="btn-secondary" 
                           style={{ padding: '8px 16px', borderRadius: 'var(--border-radius)', transition: 'all 0.3s ease' }}
                         >
-                          View Details
+                          {t('ViewDetails')}
                         </button>
                         {scheme.official_website && (
                           <a href={scheme.official_website} target="_blank" rel="noopener noreferrer" style={styles.linkBtn}>
-                            Apply Now
+                            {t('ApplyNow')}
                           </a>
                         )}
                       </div>
@@ -203,9 +234,9 @@ const EligibilityForm = () => {
           ) : (
              <div className="glass-card" style={styles.placeholderCard}>
                 <FileCheck size={48} color="var(--primary-color)" style={{ marginBottom: '20px' }} />
-                <h3>Verification Required</h3>
+                <h3>{t('VerificationRequired')}</h3>
                 <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '10px' }}>
-                  Please complete the document verification to view your eligible schemes.
+                  {t('VerificationDesc')}
                 </p>
              </div>
           )}
@@ -222,7 +253,7 @@ const EligibilityForm = () => {
                 </div>
                 <div>
                   <h3 style={{fontSize: '1.4rem', fontWeight: 700, color: '#fff', lineHeight: 1.2}}>{selectedScheme.name}</h3>
-                  <span style={{fontSize: '0.85rem', color: 'var(--text-muted)'}}>Government Scheme Details</span>
+                  <span style={{fontSize: '0.85rem', color: 'var(--text-muted)'}}>{t('SchemeDetailsSubtitle', 'Government Scheme Details')}</span>
                 </div>
               </div>
               <button onClick={() => setSelectedScheme(null)} style={styles.closeBtn}><X size={24} color="var(--text-muted)" /></button>
@@ -234,7 +265,7 @@ const EligibilityForm = () => {
                 <div style={styles.infoCard}>
                   <div style={styles.cardHeader}>
                     <Info size={18} color="var(--primary-color)" />
-                    <h4 style={styles.cardTitle}>Scheme Overview</h4>
+                    <h4 style={styles.cardTitle}>{t('SchemeOverview')}</h4>
                   </div>
                   <p style={styles.cardText}>{selectedScheme.description}</p>
                 </div>
@@ -243,10 +274,10 @@ const EligibilityForm = () => {
                 <div style={styles.infoCard}>
                   <div style={styles.cardHeader}>
                     <Target size={18} color="var(--secondary-color)" />
-                    <h4 style={styles.cardTitle}>Target Beneficiaries</h4>
+                    <h4 style={styles.cardTitle}>{t('TargetBeneficiaries')}</h4>
                   </div>
                   <div style={styles.cardText}>
-                    <span style={styles.highlightBadge}>{selectedScheme.target_beneficiaries || 'Not specified'}</span>
+                    <span style={styles.highlightBadge}>{selectedScheme.target_beneficiaries || t('NotSpecified', 'Not specified')}</span>
                   </div>
                 </div>
 
@@ -255,13 +286,13 @@ const EligibilityForm = () => {
                   <div style={styles.infoCard}>
                     <div style={styles.cardHeader}>
                       <ShieldCheck size={18} color="#a855f7" />
-                      <h4 style={styles.cardTitle}>Eligibility Criteria</h4>
+                      <h4 style={styles.cardTitle}>{t('EligibilityCriteria')}</h4>
                     </div>
                     <ul style={styles.detailList}>
-                      {selectedScheme.rules?.min_age && <li>Minimum Age: <strong>{selectedScheme.rules.min_age}</strong></li>}
-                      {selectedScheme.rules?.max_age && <li>Maximum Age: <strong>{selectedScheme.rules.max_age}</strong></li>}
-                      {selectedScheme.rules?.max_income && <li>Maximum Income: <strong>₹{selectedScheme.rules.max_income}</strong></li>}
-                      <li>Supported Categories: <strong>{Array.isArray(selectedScheme.rules?.allowed_categories) ? selectedScheme.rules.allowed_categories.join(', ') : 'All'}</strong></li>
+                      {selectedScheme.rules?.min_age && <li>{t('MinAge')}: <strong>{selectedScheme.rules.min_age}</strong></li>}
+                      {selectedScheme.rules?.max_age && <li>{t('MaxAge')}: <strong>{selectedScheme.rules.max_age}</strong></li>}
+                      {selectedScheme.rules?.max_income && <li>{t('MaxIncome')}: <strong>₹{selectedScheme.rules.max_income}</strong></li>}
+                      <li>{t('AllowedCategories', 'Supported Categories')}: <strong>{Array.isArray(selectedScheme.rules?.allowed_categories) ? selectedScheme.rules.allowed_categories.join(', ') : t('AllCategories', 'All Categories')}</strong></li>
                     </ul>
                   </div>
                 )}
@@ -271,7 +302,7 @@ const EligibilityForm = () => {
                   <div style={styles.infoCard}>
                     <div style={styles.cardHeader}>
                       <ClipboardList size={18} color="#f59e0b" />
-                      <h4 style={styles.cardTitle}>How to Apply</h4>
+                      <h4 style={styles.cardTitle}>{t('HowToApply')}</h4>
                     </div>
                     <p style={styles.cardText}>{selectedScheme.application_process}</p>
                   </div>
@@ -287,7 +318,7 @@ const EligibilityForm = () => {
                     rel="noopener noreferrer" 
                     style={styles.applyBtn}
                   >
-                    Go to Official Portal <ExternalLink size={18} />
+                    {t('GoToPortal')} <ExternalLink size={18} />
                   </a>
                 </div>
               )}

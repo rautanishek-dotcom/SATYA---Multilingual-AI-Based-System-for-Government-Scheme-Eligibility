@@ -10,8 +10,17 @@ const SchemeList = () => {
   const [error, setError] = useState(null);
   const [selectedScheme, setSelectedScheme] = useState(null);
   const [selectedFilter, setSelectedFilter] = useState('All');
+  const [selectedState, setSelectedState] = useState('All');
   
   const filterOptions = ['All', 'Farmer', 'Student', 'Woman', 'Senior Citizen', 'Business', 'Housing', 'Healthcare'];
+  const states = [
+    'All', 'All India', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat', 
+    'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh', 'Maharashtra', 
+    'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 
+    'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal', 'Andaman and Nicobar Islands', 
+    'Chandigarh', 'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Jammu and Kashmir', 'Ladakh', 
+    'Lakshadweep', 'Puducherry'
+  ];
 
   useEffect(() => {
     fetchSchemes();
@@ -20,56 +29,83 @@ const SchemeList = () => {
   const fetchSchemes = async () => {
     try {
       const response = await fetch('http://localhost:5000/api/schemes/');
-      if (!response.ok) throw new Error("Failed to fetch");
+      if (!response.ok) throw new Error(t('FetchError', "Failed to fetch"));
       const data = await response.json();
       setSchemes(data);
     } catch (err) {
       console.error(err);
-      setError("Could not connect to server. Ensure backend is running.");
+      setError(t('ConnectionError', "Could not connect to server. Ensure backend is running."));
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredSchemes = schemes.filter(s => {
-    const matchesSearch = s.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          s.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = selectedFilter === 'All' || 
-                          (s.target_beneficiaries?.toLowerCase().includes(selectedFilter.toLowerCase()) || 
-                           s.description?.toLowerCase().includes(selectedFilter.toLowerCase()));
-    
-    return matchesSearch && matchesFilter;
-  });
+  const filteredAndSortedSchemes = schemes
+    .filter(s => {
+      const matchesSearch = !searchTerm || 
+                            s.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                            s.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesFilter = selectedFilter === 'All' || 
+                            (s.target_beneficiaries?.toLowerCase().includes(selectedFilter.toLowerCase()) || 
+                             s.description?.toLowerCase().includes(selectedFilter.toLowerCase()));
+      
+      const schemeState = s.state || 'All India';
+      const matchesState = selectedState === 'All' || 
+                           (selectedState === 'All India' ? schemeState === 'All India' : (schemeState === selectedState || schemeState === 'All India'));
+
+      return matchesSearch && matchesFilter && matchesState;
+    })
+    .sort((a, b) => {
+      if (selectedState !== 'All' && selectedState !== 'All India') {
+        const aIsState = a.state === selectedState;
+        const bIsState = b.state === selectedState;
+        if (aIsState && !bIsState) return -1;
+        if (!aIsState && bIsState) return 1;
+      }
+      return 0;
+    });
 
   return (
     <div className="container animate-fade-in" style={styles.container}>
       <div style={styles.header}>
-        <h2 style={{ fontSize: '2.5rem', marginBottom: '10px' }}>Govt Schemes Directory</h2>
-        <p style={{ color: 'var(--text-muted)' }}>Browse through all available government schemes.</p>
+        <h2 style={{ fontSize: '2.5rem', marginBottom: '10px' }}>{t('GovtSchemesDirectory')}</h2>
+        <p style={{ color: 'var(--text-muted)' }}>{t('BrowseAllSchemes')}</p>
       </div>
 
       <div style={styles.searchBar} className="glass-card">
         <Search size={20} color="var(--text-muted)" style={styles.searchIcon} />
         <input 
           type="text" 
-          placeholder="Search by name, keyword, or category..." 
+          placeholder={t('SearchPlaceholder')} 
           style={styles.searchInput}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-        <select 
-          style={{...styles.searchInput, maxWidth: '150px', borderLeft: '1px solid var(--border-color)', paddingLeft: '15px', marginLeft: '10px'}}
-          value={selectedFilter}
-          onChange={(e) => setSelectedFilter(e.target.value)}
-        >
-          {filterOptions.map(opt => (
-            <option key={opt} value={opt} style={{color: '#000'}}>{opt}</option>
-          ))}
-        </select>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', borderLeft: '1px solid var(--border-color)', paddingLeft: '15px', marginLeft: '10px' }}>
+          <select 
+            style={{...styles.searchInput, maxWidth: '130px'}}
+            value={selectedFilter}
+            onChange={(e) => setSelectedFilter(e.target.value)}
+          >
+            {filterOptions.map(opt => (
+              <option key={opt} value={opt} style={{color: '#000'}}>{t(opt.replace(' ', ''), opt)}</option>
+            ))}
+          </select>
+          <select 
+            style={{...styles.searchInput, maxWidth: '150px'}}
+            value={selectedState}
+            onChange={(e) => setSelectedState(e.target.value)}
+          >
+            <option value="All" style={{color: '#000'}}>{t('AllStates', 'All States')}</option>
+            {states.filter(s => s !== 'All').map(st => (
+              <option key={st} value={st} style={{color: '#000'}}>{t(st.replace(/\s/g, ''), st)}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {loading ? (
-        <div style={styles.loader}>Loading schemes...</div>
+        <div style={styles.loader}>{t('LoadingSchemes')}</div>
       ) : error ? (
         <div className="glass-card" style={styles.errorCard}>
           <AlertCircle size={32} color="var(--error-color)" />
@@ -77,26 +113,43 @@ const SchemeList = () => {
         </div>
       ) : (
         <div style={styles.grid}>
-          {filteredSchemes.map((scheme, idx) => (
-            <div key={idx} className="glass-card" style={styles.card}>
-              <div style={styles.cardContent}>
-                <h3 style={styles.cardTitle}>{scheme.name}</h3>
-                <p style={styles.cardDesc}>{scheme.description?.substring(0, 100)}...</p>
-                <div style={styles.badgeGroup}>
-                  <span style={styles.badge}>{scheme.target_beneficiaries}</span>
+          {filteredAndSortedSchemes.map((scheme, idx) => {
+            return (
+              <div key={idx} className="glass-card" style={styles.card}>
+                <div style={styles.cardContent}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                    <h3 style={{ ...styles.cardTitle, margin: 0 }}>{scheme.name}</h3>
+                    <span style={{
+                      padding: '4px 8px',
+                      borderRadius: '12px',
+                      fontSize: '0.7rem',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      background: (!scheme.state || scheme.state === 'All India') ? 'rgba(79, 70, 229, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                      color: (!scheme.state || scheme.state === 'All India') ? 'var(--primary-color)' : 'var(--secondary-color)',
+                      border: `1px solid ${(!scheme.state || scheme.state === 'All India') ? 'rgba(79, 70, 229, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`,
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {(!scheme.state || scheme.state === 'All India') ? t('Central', 'Central') : (scheme.state)}
+                    </span>
+                  </div>
+                  <p style={styles.cardDesc}>{scheme.description?.substring(0, 100)}...</p>
+                  <div style={styles.badgeGroup}>
+                    <span style={styles.badge}>{scheme.target_beneficiaries}</span>
+                  </div>
+                </div>
+                <div style={styles.cardFooter}>
+                  <button 
+                    className="btn-secondary" 
+                    style={{ ...styles.cardBtn, transition: 'all 0.3s ease' }} 
+                    onClick={() => setSelectedScheme(scheme)}
+                  >
+                    {t('ViewDetails')}
+                  </button>
                 </div>
               </div>
-              <div style={styles.cardFooter}>
-                <button 
-                   className="btn-secondary" 
-                   style={{ ...styles.cardBtn, transition: 'all 0.3s ease' }} 
-                   onClick={() => setSelectedScheme(scheme)}
-                >
-                  View Details
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -110,7 +163,7 @@ const SchemeList = () => {
                 </div>
                 <div>
                   <h3 style={{fontSize: '1.4rem', fontWeight: 700, color: '#fff', lineHeight: 1.2}}>{selectedScheme.name}</h3>
-                  <span style={{fontSize: '0.85rem', color: 'var(--text-muted)'}}>Government Scheme Details</span>
+                  <span style={{fontSize: '0.85rem', color: 'var(--text-muted)'}}>{t('SchemeDetailsSubtitle', 'Government Scheme Details')}</span>
                 </div>
               </div>
               <button onClick={() => setSelectedScheme(null)} style={styles.closeBtn}><X size={24} color="var(--text-muted)" /></button>
@@ -119,51 +172,51 @@ const SchemeList = () => {
             <div style={styles.modalBody}>
               <div style={styles.infoGrid}>
                 {/* Overview Section */}
-                <div style={styles.infoCard}>
-                  <div style={styles.cardHeader}>
-                    <Info size={18} color="var(--primary-color)" />
-                    <h4 style={styles.infoCardTitle}>Scheme Overview</h4>
-                  </div>
-                  <p style={styles.cardText}>{selectedScheme.description}</p>
-                </div>
-
-                {/* Beneficiaries Section */}
-                <div style={styles.infoCard}>
-                  <div style={styles.cardHeader}>
-                    <Target size={18} color="var(--secondary-color)" />
-                    <h4 style={styles.infoCardTitle}>Target Beneficiaries</h4>
-                  </div>
-                  <div style={styles.cardText}>
-                    <span style={styles.highlightBadge}>{selectedScheme.target_beneficiaries || 'Not specified'}</span>
-                  </div>
-                </div>
-
-                {/* Eligibility Section */}
-                {selectedScheme.rules && (
                   <div style={styles.infoCard}>
                     <div style={styles.cardHeader}>
-                      <ShieldCheck size={18} color="#a855f7" />
-                      <h4 style={styles.infoCardTitle}>Eligibility Criteria</h4>
+                      <Info size={18} color="var(--primary-color)" />
+                      <h4 style={styles.infoCardTitle}>{t('SchemeOverview')}</h4>
                     </div>
-                    <ul style={styles.detailList}>
-                      {selectedScheme.rules?.min_age && <li>Minimum Age: <strong>{selectedScheme.rules.min_age}</strong></li>}
-                      {selectedScheme.rules?.max_age && <li>Maximum Age: <strong>{selectedScheme.rules.max_age}</strong></li>}
-                      {selectedScheme.rules?.max_income && <li>Maximum Income: <strong>₹{selectedScheme.rules.max_income}</strong></li>}
-                      <li>Supported Categories: <strong>{Array.isArray(selectedScheme.rules?.allowed_categories) ? selectedScheme.rules.allowed_categories.join(', ') : 'All'}</strong></li>
-                    </ul>
+                    <p style={styles.cardText}>{selectedScheme.description}</p>
                   </div>
-                )}
 
-                {/* Application Section */}
-                {selectedScheme.application_process && (
+                  {/* Beneficiaries Section */}
                   <div style={styles.infoCard}>
                     <div style={styles.cardHeader}>
-                      <ClipboardList size={18} color="#f59e0b" />
-                      <h4 style={styles.infoCardTitle}>How to Apply</h4>
+                      <Target size={18} color="var(--secondary-color)" />
+                      <h4 style={styles.infoCardTitle}>{t('TargetBeneficiaries')}</h4>
                     </div>
-                    <p style={styles.cardText}>{selectedScheme.application_process}</p>
+                    <div style={styles.cardText}>
+                      <span style={styles.highlightBadge}>{selectedScheme.target_beneficiaries || t('NotSpecified', 'Not specified')}</span>
+                    </div>
                   </div>
-                )}
+
+                  {/* Eligibility Section */}
+                  {selectedScheme.rules && (
+                    <div style={styles.infoCard}>
+                      <div style={styles.cardHeader}>
+                        <ShieldCheck size={18} color="#a855f7" />
+                        <h4 style={styles.infoCardTitle}>{t('EligibilityCriteria')}</h4>
+                      </div>
+                      <ul style={styles.detailList}>
+                        {selectedScheme.rules?.min_age && <li>{t('MinAge')}: <strong>{selectedScheme.rules.min_age}</strong></li>}
+                        {selectedScheme.rules?.max_age && <li>{t('MaxAge')}: <strong>{selectedScheme.rules.max_age}</strong></li>}
+                        {selectedScheme.rules?.max_income && <li>{t('MaxIncome')}: <strong>₹{selectedScheme.rules.max_income}</strong></li>}
+                        <li>{t('AllowedCategories', 'Supported Categories')}: <strong>{Array.isArray(selectedScheme.rules?.allowed_categories) ? selectedScheme.rules.allowed_categories.join(', ') : t('AllCategories', 'All Categories')}</strong></li>
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Application Section */}
+                  {selectedScheme.official_website && (
+                    <div style={styles.infoCard}>
+                      <div style={styles.cardHeader}>
+                        <ClipboardList size={18} color="#f59e0b" />
+                        <h4 style={styles.infoCardTitle}>{t('HowToApply')}</h4>
+                      </div>
+                      <p style={styles.cardText}>{selectedScheme.application_process}</p>
+                    </div>
+                  )}
               </div>
 
               {/* Action Section */}
@@ -175,7 +228,7 @@ const SchemeList = () => {
                     rel="noopener noreferrer" 
                     style={styles.applyBtn}
                   >
-                    Go to Official Portal <ExternalLink size={18} />
+                    {t('GoToPortal')} <ExternalLink size={18} />
                   </a>
                 </div>
               )}

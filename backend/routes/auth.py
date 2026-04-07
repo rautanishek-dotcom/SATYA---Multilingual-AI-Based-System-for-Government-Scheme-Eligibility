@@ -67,7 +67,9 @@ def login():
                 "id": str(user["_id"]),
                 "name": user.get("name"),
                 "email": user["email"],
-                "role": user.get("role")
+                "role": user.get("role"),
+                "aadhaar_verified": user.get("aadhaar_verified", False),
+                "profile": user.get("profile", {})
             }
         }), 200
         

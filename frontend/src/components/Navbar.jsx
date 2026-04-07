@@ -60,7 +60,8 @@ const Navbar = () => {
           <Link to="/" style={styles.link}>{t('Home') || 'Home'}</Link>
           <Link to="/schemes" style={styles.link}>{t('Schemes')}</Link>
           <Link to="/check" style={styles.link}>{t('EligibilityEngine')}</Link>
-          <Link to="/admin" style={styles.link}>Admin</Link>
+          <Link to="/verify" style={styles.link}>{t('VerifyDocs', 'Verify Docs')}</Link>
+          <Link to="/admin" style={styles.link}>{t('Admin', 'Admin')}</Link>
           
           <div style={styles.langSelector}>
             <Globe size={18} />
@@ -70,14 +71,20 @@ const Navbar = () => {
               style={styles.select}
             >
               <option value="en" style={{color: '#000'}}>English</option>
-              <option value="hi" style={{color: '#000'}}>हिंदी</option>
-              <option value="kn" style={{color: '#000'}}>ಕನ್ನಡ</option>
+              <option value="hi" style={{color: '#000'}}>हिंदी (Hindi)</option>
+              <option value="bn" style={{color: '#000'}}>বাংলা (Bengali)</option>
+              <option value="mr" style={{color: '#000'}}>मराठी (Marathi)</option>
+              <option value="te" style={{color: '#000'}}>తెలుగు (Telugu)</option>
+              <option value="ta" style={{color: '#000'}}>தமிழ் (Tamil)</option>
+              <option value="gu" style={{color: '#000'}}>ગુજરાતી (Gujarati)</option>
+              <option value="kn" style={{color: '#000'}}>ಕನ್ನಡ (Kannada)</option>
+              <option value="ml" style={{color: '#000'}}>മലയാളം (Malayalam)</option>
             </select>
           </div>
           
           {token ? (
             <button onClick={handleLogout} className="btn-secondary" style={styles.loginBtn}>
-              <User size={16} /> Logout
+              <User size={16} /> {t('Logout', 'Logout')}
             </button>
           ) : (
             <Link to="/login" className="btn-secondary" style={styles.loginBtn}>
@@ -95,10 +102,11 @@ const Navbar = () => {
       {/* Mobile Menu */}
       {isOpen && (
         <div style={styles.mobileMenu} className="glass-card">
-          <Link to="/" style={styles.mobileLink} onClick={() => setIsOpen(false)}>{t('Home') || 'Home'}</Link>
+          <Link to="/" style={styles.mobileLink} onClick={() => setIsOpen(false)}>{t('Home')}</Link>
           <Link to="/schemes" style={styles.mobileLink} onClick={() => setIsOpen(false)}>{t('Schemes')}</Link>
           <Link to="/check" style={styles.mobileLink} onClick={() => setIsOpen(false)}>{t('EligibilityEngine')}</Link>
-          <Link to="/admin" style={styles.mobileLink} onClick={() => setIsOpen(false)}>Admin</Link>
+          <Link to="/verify" style={styles.mobileLink} onClick={() => setIsOpen(false)}>{t('VerifyDocs', 'Verify Docs')}</Link>
+          <Link to="/admin" style={styles.mobileLink} onClick={() => setIsOpen(false)}>{t('Admin', 'Admin')}</Link>
           <div style={{ ...styles.mobileLink, ...styles.langSelector }}>
             <Globe size={18} />
             <select 
@@ -107,13 +115,19 @@ const Navbar = () => {
               style={styles.select}
             >
               <option value="en" style={{color: '#000'}}>English</option>
-              <option value="hi" style={{color: '#000'}}>हिंदी</option>
-              <option value="kn" style={{color: '#000'}}>ಕನ್ನಡ</option>
+              <option value="hi" style={{color: '#000'}}>हिंदी (Hindi)</option>
+              <option value="bn" style={{color: '#000'}}>বাংলা (Bengali)</option>
+              <option value="mr" style={{color: '#000'}}>मराठी (Marathi)</option>
+              <option value="te" style={{color: '#000'}}>తెలుగు (Telugu)</option>
+              <option value="ta" style={{color: '#000'}}>தமிழ் (Tamil)</option>
+              <option value="gu" style={{color: '#000'}}>ગુજરાતી (Gujarati)</option>
+              <option value="kn" style={{color: '#000'}}>ಕನ್ನಡ (Kannada)</option>
+              <option value="ml" style={{color: '#000'}}>മലയാളം (Malayalam)</option>
             </select>
           </div>
           {token ? (
             <button onClick={handleLogout} style={{...styles.mobileLink, background: 'transparent', border: 'none', textAlign: 'left', width: '100%', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'}}>
-              <User size={16} /> Logout
+              <User size={16} /> {t('Logout', 'Logout')}
             </button>
           ) : (
             <Link to="/login" style={styles.mobileLink} onClick={() => setIsOpen(false)}>{t('Login')}</Link>

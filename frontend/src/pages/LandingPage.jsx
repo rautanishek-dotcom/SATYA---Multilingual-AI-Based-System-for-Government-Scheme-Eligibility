@@ -27,7 +27,7 @@ const LandingPage = () => {
             {t('CheckEligibilityBtn')}
           </Link>
           <Link to="/schemes" className="btn-secondary" style={styles.secBtn}>
-            Browse Schemes
+            {t('BrowseSchemes')}
           </Link>
         </div>
       </div>
@@ -36,18 +36,18 @@ const LandingPage = () => {
       <div style={styles.features}>
         <Link to="/check" className="glass-card" style={styles.featureCard}>
           <div style={styles.iconWrapper}><ShieldCheck size={32} color="var(--primary-color)" /></div>
-          <h3>AI Eligibility Check</h3>
-          <p>Get instant recommendations tailored to your profile.</p>
+          <h3>{t('AIFeatureTitle')}</h3>
+          <p>{t('AIFeatureDesc')}</p>
         </Link>
         <Link to="/schemes" className="glass-card" style={styles.featureCard}>
           <div style={styles.iconWrapper}><Search size={32} color="var(--secondary-color)" /></div>
-          <h3>Easy Scheme Discovery</h3>
-          <p>Browse through hundreds of official government schemes in simple language.</p>
+          <h3>{t('DiscoveryFeatureTitle')}</h3>
+          <p>{t('DiscoveryFeatureDesc')}</p>
         </Link>
         <div className="glass-card" style={styles.featureCard}>
           <div style={styles.iconWrapper}><Users size={32} color="#a855f7" /></div>
-          <h3>Multilingual Support</h3>
-          <p>Access information seamlessly in English, Hindi, and Kannada.</p>
+          <h3>{t('MultiLangFeatureTitle')}</h3>
+          <p>{t('MultiLangFeatureDesc')}</p>
         </div>
       </div>
     </div>

@@ -66,6 +66,13 @@ def get_eligible_schemes():
     eligible_schemes = []
 
     for scheme in all_schemes:
+        # State check - Priority filter
+        scheme_state = scheme.get("state", "All India")
+        state_match = (scheme_state == "All India") or (scheme_state.lower() == state.lower())
+        
+        if not state_match:
+            continue
+
         # Simple Rule Based Matching
         matches = True
         rules = scheme.get("rules", {})
@@ -92,10 +99,6 @@ def get_eligible_schemes():
         if "special_category" in rules and special_category not in rules["special_category"] and "all" not in rules["special_category"]:
             matches = False
             
-        # State check
-        if "state" in rules and state not in rules["state"] and "all" not in rules["state"]:
-             matches = False
-             
         if matches:
             scheme["_id"] = str(scheme["_id"])
             eligible_schemes.append({
@@ -105,7 +108,9 @@ def get_eligible_schemes():
                 "official_website": scheme.get("official_website"),
                 "target_beneficiaries": scheme.get("target_beneficiaries"),
                 "application_process": scheme.get("application_process"),
-                "match_score": 100 # For complex ML this would vary
+                "state": scheme_state,
+                "rules": rules,
+                "match_score": 100 
             })
             
     return jsonify(eligible_schemes), 200
