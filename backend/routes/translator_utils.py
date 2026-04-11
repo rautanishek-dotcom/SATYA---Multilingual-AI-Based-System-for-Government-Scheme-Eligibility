@@ -1,13 +1,20 @@
-from googletrans import Translator
-from langdetect import detect, DetectorFactory
+"""
+Translation utilities for SATYA multilingual system.
+Uses direct Google Translate API (no googletrans library dependency for translation).
+Thread-safe cache with periodic disk writes for performance.
+"""
 import re
 import json
 import os
+import time
+import threading
+import urllib.request
+import urllib.parse
+from langdetect import detect, DetectorFactory
+from deep_translator import GoogleTranslator
 
 # Set seed for consistent detection
 DetectorFactory.seed = 0
-
-translator = Translator()
 
 # Local Cache Path
 CACHE_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
@@ -50,6 +57,11 @@ STATIC_UI_CACHE = {
     }
 }
 
+# ============ CACHE SYSTEM ============
+
+_cache_lock = threading.Lock()
+_cache_dirty = False
+
 def load_cache():
     if os.path.exists(CACHE_FILE):
         try:
@@ -59,71 +71,199 @@ def load_cache():
             return {}
     return {}
 
-def save_cache(cache_data):
+def save_cache_to_disk():
+    global _cache_dirty
+    if not _cache_dirty:
+        return
     os.makedirs(CACHE_DIR, exist_ok=True)
     try:
-        with open(CACHE_FILE, 'w', encoding='utf-8') as f:
-            json.dump(cache_data, f, ensure_ascii=False, indent=2)
+        with _cache_lock:
+            with open(CACHE_FILE, 'w', encoding='utf-8') as f:
+                json.dump(PERSISTENT_CACHE, f, ensure_ascii=False, indent=2)
+            _cache_dirty = False
     except:
         pass
 
-# Initialize persistnet cache
+def cache_put(key, value):
+    global _cache_dirty
+    with _cache_lock:
+        PERSISTENT_CACHE[key] = value
+        _cache_dirty = True
+
+# For backward compat with prime script
+def save_cache(cache_data):
+    save_cache_to_disk()
+
 PERSISTENT_CACHE = load_cache()
+SUPPORTED_LANGUAGES = {'en', 'hi', 'ta', 'te', 'kn', 'mr', 'bn', 'gu', 'ml'}
+
+# ============ DIRECT GOOGLE TRANSLATE (no googletrans library) ============
+def _translate_single(text, target_lang):
+    """Translate a single string using deep-translator with retry logic."""
+    for attempt in range(3):
+        try:
+            translator = GoogleTranslator(source='auto', target=target_lang)
+            translated = translator.translate(text)
+            if translated:
+                return translated
+        except Exception as e:
+            pass
+        time.sleep(0.5 * (attempt + 1))
+    return text  # Return original on all failures
+
+# ============ LANGUAGE DETECTION ============
 
 def detect_language(text):
     if not text or len(text.strip()) < 2:
         return 'en'
-    
     scripts = {
-        'hi': r'[\u0900-\u097F]',
-        'bn': r'[\u0980-\u09FF]',
-        'ta': r'[\u0B80-\u0BFF]',
-        'te': r'[\u0C00-\u0C7F]',
-        'kn': r'[\u0C80-\u0CFF]',
-        'ml': r'[\u0D00-\u0D7F]',
+        'hi': r'[\u0900-\u097F]', 'bn': r'[\u0980-\u09FF]',
+        'ta': r'[\u0B80-\u0BFF]', 'te': r'[\u0C00-\u0C7F]',
+        'kn': r'[\u0C80-\u0CFF]', 'ml': r'[\u0D00-\u0D7F]',
         'gu': r'[\u0A80-\u0AFF]'
     }
-    
     for lang, pattern in scripts.items():
         if re.search(pattern, text):
             return lang
-            
     try:
         detected = detect(text)
-        if detected == 'mr': return 'hi'
-        return detected
+        return detected if detected in SUPPORTED_LANGUAGES else 'en'
     except:
         return 'en'
 
+# ============ PUBLIC TRANSLATION FUNCTIONS ============
+
 def translate_to_english(text):
-    # Check cache first
     cache_key = f"to_en:{text}"
     if cache_key in PERSISTENT_CACHE:
         return PERSISTENT_CACHE[cache_key]
-
+    
     try:
-        result = translator.translate(text, dest='en')
-        PERSISTENT_CACHE[cache_key] = result.text
-        save_cache(PERSISTENT_CACHE)
-        return result.text
+        translator = GoogleTranslator(source='auto', target='en')
+        result = translator.translate(text)
+        if result and result != text:
+            cache_put(cache_key, result)
+            save_cache_to_disk()
+            return result
     except Exception as e:
-        print(f"Translation to English error: {e}")
-        return text
+        pass
+    return text
 
 def translate_from_english(text, target_lang):
-    if target_lang == 'en':
+    """Translate a single text from English. Cache-first, then API."""
+    if not text or not target_lang or target_lang == 'en':
         return text
-    
-    # Check cache first
-    cache_key = f"{target_lang}:{text}"
-    if cache_key in PERSISTENT_CACHE:
-        return PERSISTENT_CACHE[cache_key]
 
-    try:
-        result = translator.translate(text, dest=target_lang)
-        PERSISTENT_CACHE[cache_key] = result.text
-        save_cache(PERSISTENT_CACHE)
-        return result.text
-    except Exception as e:
-        print(f"Translation from English error: {e}")
-        return text
+    cache_key = f"{target_lang}:{text}"
+    cached = PERSISTENT_CACHE.get(cache_key)
+    if cached:
+        return cached
+
+    # For long compound text, split and translate parts
+    if len(text) > 100 and ('. ' in text or '\n' in text):
+        separator = '\n' if '\n' in text else '. '
+        parts = [p.strip() for p in text.split(separator) if p.strip()]
+        translated_parts = []
+        for p in parts:
+            pc = PERSISTENT_CACHE.get(f"{target_lang}:{p}")
+            if pc:
+                translated_parts.append(pc)
+            else:
+                tr = _translate_single(p, target_lang)
+                if tr:
+                    cache_put(f"{target_lang}:{p}", tr)
+                translated_parts.append(tr)
+        result = separator.join(translated_parts)
+        if result:
+            cache_put(cache_key, result)
+            save_cache_to_disk()
+        return result
+
+    # Single text
+    result = _translate_single(text, target_lang)
+    if result:
+        cache_put(cache_key, result)
+        save_cache_to_disk()
+    return result
+
+
+def translate_batch_from_english(texts, target_lang):
+    """Batch translation. Cache-first, then parallel API calls for misses."""
+    if not texts or not target_lang or target_lang == 'en':
+        return texts
+
+    # 1. Expand compound texts
+    expanded_map = {}
+    all_fragments = []
+
+    for text in texts:
+        if not text:
+            expanded_map[text] = [text]
+            continue
+        if len(text) > 100 and ('. ' in text or '\n' in text):
+            separator = '\n' if '\n' in text else '. '
+            parts = [p.strip() for p in text.split(separator) if p.strip()]
+            expanded_map[text] = parts
+            all_fragments.extend(parts)
+        else:
+            expanded_map[text] = [text]
+            all_fragments.append(text)
+
+    # 2. Deduplicate and check cache
+    unique_fragments = list(set(all_fragments))
+    fragment_results = {}
+    to_translate = []
+
+    for frag in unique_fragments:
+        if not frag:
+            fragment_results[frag] = frag
+            continue
+        cached = PERSISTENT_CACHE.get(f"{target_lang}:{frag}")
+        if cached:
+            fragment_results[frag] = cached
+        else:
+            to_translate.append(frag)
+
+    # 3. Translate missing fragments in parallel using thread pool
+    if to_translate:
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        def translate_one(text):
+            result = _translate_single(text, target_lang)
+            return (text, result)
+
+        max_workers = min(8, max(1, len(to_translate)))
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(translate_one, text) for text in to_translate]
+            for future in as_completed(futures):
+                try:
+                    original, translated = future.result(timeout=15)
+                    fragment_results[original] = translated
+                    if translated:
+                        cache_put(f"{target_lang}:{original}", translated)
+                except:
+                    pass
+
+        save_cache_to_disk()
+
+    # 4. Reconstruct original texts
+    final_results = []
+    for text in texts:
+        if not text:
+            final_results.append(text)
+            continue
+        parts = expanded_map.get(text, [text])
+        translated_parts = [fragment_results.get(p, p) for p in parts]
+
+        if len(text) > 100 and ('. ' in text or '\n' in text):
+            separator = '\n' if '\n' in text else '. '
+        else:
+            separator = '. '
+        final_text = separator.join(translated_parts)
+
+        if final_text:
+            cache_put(f"{target_lang}:{text}", final_text)
+        final_results.append(final_text)
+
+    save_cache_to_disk()
+    return final_results

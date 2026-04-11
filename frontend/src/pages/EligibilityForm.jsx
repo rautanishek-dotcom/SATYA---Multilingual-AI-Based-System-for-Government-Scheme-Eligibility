@@ -4,7 +4,7 @@ import { CheckCircle2, ChevronRight, Search, X, Target, ClipboardList, Info, Ext
 import DocumentVerification from '../components/DocumentVerification';
 
 const EligibilityForm = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [formData, setFormData] = useState({
     name: '',
     dob: '',
@@ -32,8 +32,6 @@ const EligibilityForm = () => {
         if (userObj && userObj.id) {
           setUserId(userObj.id);
           
-          // Pre-fill data removed per user request
-          
           if (window.satya_aadhaar_verified || userObj.aadhaar_verified) {
             setIsVerified(true);
           }
@@ -44,6 +42,34 @@ const EligibilityForm = () => {
     }
   }, []);
 
+  // Re-fetch or re-translate schemes when language changes
+  React.useEffect(() => {
+    const refreshTranslations = async () => {
+      if (results && results.length > 0) {
+        try {
+          const payload = { ...formData, user_id: userId, lang: i18n.language };
+          const response = await fetch('http://localhost:5000/api/schemes/eligible', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const data = await response.json();
+          setResults(data);
+          
+          // Update modal if open
+          if (selectedScheme) {
+            const updated = data.find(s => s.name === selectedScheme.name || (s.id && s.id === selectedScheme.id));
+            if (updated) setSelectedScheme(updated);
+          }
+        } catch (error) {
+          console.error("Error updating translations on language change:", error);
+        }
+      }
+    };
+    
+    refreshTranslations();
+  }, [i18n.language]);
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -52,7 +78,7 @@ const EligibilityForm = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const payload = { ...formData, user_id: userId };
+      const payload = { ...formData, user_id: userId, lang: i18n.language };
 
       // Assuming backend is running on localhost:5000
       const response = await fetch('http://localhost:5000/api/schemes/eligible', {
@@ -281,6 +307,17 @@ const EligibilityForm = () => {
                   </div>
                 </div>
 
+                {/* Main Benefits Section */}
+                {selectedScheme.benefits && (
+                  <div style={styles.infoCard}>
+                    <div style={styles.cardHeader}>
+                      <Info size={18} color="var(--primary-color)" />
+                      <h4 style={styles.cardTitle}>{t('MainBenefits', 'Main Benefits')}</h4>
+                    </div>
+                    <p style={styles.cardText}>{selectedScheme.benefits}</p>
+                  </div>
+                )}
+
                 {/* Eligibility Section */}
                 {selectedScheme.rules && (
                   <div style={styles.infoCard}>
@@ -289,22 +326,46 @@ const EligibilityForm = () => {
                       <h4 style={styles.cardTitle}>{t('EligibilityCriteria')}</h4>
                     </div>
                     <ul style={styles.detailList}>
-                      {selectedScheme.rules?.min_age && <li>{t('MinAge')}: <strong>{selectedScheme.rules.min_age}</strong></li>}
-                      {selectedScheme.rules?.max_age && <li>{t('MaxAge')}: <strong>{selectedScheme.rules.max_age}</strong></li>}
-                      {selectedScheme.rules?.max_income && <li>{t('MaxIncome')}: <strong>₹{selectedScheme.rules.max_income}</strong></li>}
+                      {selectedScheme.rules?.min_age !== undefined && <li>{t('MinAge')}: <strong>{selectedScheme.rules.min_age}</strong></li>}
+                      {selectedScheme.rules?.max_age !== undefined && <li>{t('MaxAge')}: <strong>{selectedScheme.rules.max_age}</strong></li>}
+                      {selectedScheme.rules?.max_income !== undefined && <li>{t('MaxIncome')}: <strong>₹{selectedScheme.rules.max_income}</strong></li>}
                       <li>{t('AllowedCategories', 'Supported Categories')}: <strong>{Array.isArray(selectedScheme.rules?.allowed_categories) ? selectedScheme.rules.allowed_categories.join(', ') : t('AllCategories', 'All Categories')}</strong></li>
                     </ul>
                   </div>
                 )}
 
                 {/* Application Section */}
-                {selectedScheme.application_process && (
+                {(selectedScheme.steps || selectedScheme.application_process) && (
                   <div style={styles.infoCard}>
                     <div style={styles.cardHeader}>
                       <ClipboardList size={18} color="#f59e0b" />
                       <h4 style={styles.cardTitle}>{t('HowToApply')}</h4>
                     </div>
-                    <p style={styles.cardText}>{selectedScheme.application_process}</p>
+                    <div style={styles.cardText}>
+                      {selectedScheme.steps ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          {selectedScheme.steps.split('. ').map((step, i) => step.trim() && (
+                            <div key={i} style={{ display: 'flex', gap: '12px' }}>
+                              <span style={{ 
+                                minWidth: '24px', 
+                                height: '24px', 
+                                background: 'var(--primary-color)', 
+                                borderRadius: '50%', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center', 
+                                fontSize: '0.8rem', 
+                                fontWeight: 700,
+                                color: '#fff'
+                              }}>{i + 1}</span>
+                              <span>{step.endsWith('.') ? step : step + '.'}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p>{selectedScheme.application_process}</p>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

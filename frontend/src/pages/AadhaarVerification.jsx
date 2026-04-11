@@ -112,8 +112,8 @@ const AadhaarScanner = () => {
             <div style={styles.iconContainer}>
               <ShieldCheck size={32} color="var(--primary-color)" />
             </div>
-            <h1 style={styles.title}>Profile Verification</h1>
-            <p style={styles.subtitle}>Verify your Aadhaar to access government schemes</p>
+            <h1 style={styles.title}>{t('ProfileVerificationTitle', 'Profile Verification')}</h1>
+            <p style={styles.subtitle}>{t('ProfileVerificationSubtitle', 'Verify your Aadhaar to access government schemes')}</p>
             
             <div style={styles.stepper}>
               <div style={step >= 1 ? styles.stepActive : styles.stepInactive}>1</div>
@@ -123,9 +123,9 @@ const AadhaarScanner = () => {
               <div style={step >= 3 ? styles.stepActive : styles.stepInactive}>3</div>
             </div>
             <div style={styles.stepLabels}>
-              <span>Upload</span>
-              <span>Scanning</span>
-              <span>Confirm</span>
+              <span>{t('StepUpload', 'Upload')}</span>
+              <span>{t('StepScanning', 'Scanning')}</span>
+              <span>{t('StepConfirm', 'Confirm')}</span>
             </div>
           </div>
 
@@ -145,8 +145,8 @@ const AadhaarScanner = () => {
                 {!preview ? (
                   <label style={styles.dropZone}>
                     <Upload size={48} color="var(--text-muted)" />
-                    <span style={styles.dropText}>Click to upload Aadhaar (Front Side)</span>
-                    <span style={styles.dropSubtext}>JPG, PNG, or PDF supported</span>
+                    <span style={styles.dropText}>{t('ClickToUpload', 'Click to upload Aadhaar (Front Side)')}</span>
+                    <span style={styles.dropSubtext}>{t('UploadFormats', 'JPG, PNG, or PDF supported')}</span>
                     <input type="file" onChange={handleFileChange} style={{ display: 'none' }} accept="image/*,.pdf" />
                   </label>
                 ) : (
@@ -156,7 +156,7 @@ const AadhaarScanner = () => {
                       onClick={() => {setPreview(null); setFile(null);}} 
                       style={styles.removeBtn}
                     >
-                      Change File
+                      {t('ChangeFile', 'Change File')}
                     </button>
                   </div>
                 )}
@@ -165,15 +165,15 @@ const AadhaarScanner = () => {
               <div style={styles.instructions}>
                 <div style={styles.instructionItem}>
                    <CheckCircle size={16} color="var(--success-color)" />
-                   <span>Ensure the QR code is clearly visible</span>
+                   <span>{t('InstructionQR', 'Ensure the QR code is clearly visible')}</span>
                 </div>
                 <div style={styles.instructionItem}>
                    <CheckCircle size={16} color="var(--success-color)" />
-                   <span>Avoid glares or blurry images</span>
+                   <span>{t('InstructionBlurry', 'Avoid glares or blurry images')}</span>
                 </div>
                 <div style={styles.instructionItem}>
                    <ShieldCheck size={16} color="var(--primary-color)" />
-                   <span>Your data is encrypted and secure</span>
+                   <span>{t('InstructionSecure', 'Your data is encrypted and secure')}</span>
                 </div>
               </div>
 
@@ -183,7 +183,7 @@ const AadhaarScanner = () => {
                 className="btn-primary"
                 style={styles.mainBtn}
               >
-                {loading ? <Loader2 className="animate-spin" /> : <><ScanLine size={20} /> Start Auto-Extraction</>}
+                {loading ? <Loader2 className="animate-spin" /> : <><ScanLine size={20} /> {t('StartAutoExtraction', 'Start Auto-Extraction')}</>}
               </button>
             </div>
           )}
@@ -195,8 +195,8 @@ const AadhaarScanner = () => {
                  <div style={styles.scanLine}></div>
                  {preview && <img src={preview} alt="Scanning" style={styles.scanningImg} />}
               </div>
-              <h3 style={{ marginTop: '30px' }}>Extracting Identity Data...</h3>
-              <p style={{ color: 'var(--text-muted)' }}>Using AI to decode Aadhaar QR code securely</p>
+              <h3 style={{ marginTop: '30px' }}>{t('ExtractingData', 'Extracting Identity Data...')}</h3>
+              <p style={{ color: 'var(--text-muted)' }}>{t('ExtractingSubtitle', 'Using AI to decode Aadhaar QR code securely')}</p>
               <div style={styles.loadingDots}>
                 <span>.</span><span>.</span><span>.</span>
               </div>
@@ -210,13 +210,13 @@ const AadhaarScanner = () => {
                   <div style={styles.successIcon}>
                     <CheckCircle size={40} color="var(--success-color)" />
                   </div>
-                  <h3>Identity Verified!</h3>
-                  <p>We've successfully extracted your details.</p>
+                  <h3>{t('IdentityVerified', 'Identity Verified!')}</h3>
+                  <p>{t('IdentityVerifiedDesc', "We've successfully extracted your details.")}</p>
                </div>
 
                <div style={styles.profileGrid}>
                   <div style={styles.fieldGroup}>
-                    <label><User size={14} /> Full Name</label>
+                    <label><User size={14} /> {t('FullName', 'Full Name')}</label>
                     <input 
                       type="text" 
                       value={extractedData.name} 
@@ -226,7 +226,7 @@ const AadhaarScanner = () => {
                   </div>
                   
                   <div style={styles.fieldGroup}>
-                    <label><Calendar size={14} /> Date of Birth</label>
+                    <label><Calendar size={14} /> {t('DateOfBirth', 'Date of Birth')}</label>
                     <input 
                       type="text" 
                       value={extractedData.dob} 
@@ -236,7 +236,7 @@ const AadhaarScanner = () => {
                   </div>
 
                   <div style={styles.fieldGroup}>
-                    <label><User size={14} /> Gender</label>
+                    <label><User size={14} /> {t('Gender', 'Gender')}</label>
                     <input 
                       type="text" 
                       value={extractedData.gender} 
@@ -246,19 +246,19 @@ const AadhaarScanner = () => {
                   </div>
 
                   <div style={styles.fieldGroup}>
-                    <label><MapPin size={14} /> Address (Masked for privacy)</label>
+                    <label><MapPin size={14} /> {t('AddressMasked', 'Address (Masked for privacy)')}</label>
                     <textarea 
                       value={maskData(extractedData.address, 10)} 
                       readOnly
                       style={{...styles.input, height: '80px', resize: 'none', background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.5)'}}
                     />
-                    <span style={{fontSize: '0.7rem', color: 'var(--text-muted)'}}>Full address captured for eligibility processing.</span>
+                    <span style={{fontSize: '0.7rem', color: 'var(--text-muted)'}}>{t('AddressCapturedNote', 'Full address captured for eligibility processing.')}</span>
                   </div>
                </div>
 
                <div style={styles.infoNote}>
                   <AlertCircle size={16} />
-                  <span>Verify and correct data if needed before proceeding.</span>
+                  <span>{t('VerifyCorrectData', 'Verify and correct data if needed before proceeding.')}</span>
                </div>
 
                <button 
@@ -266,14 +266,14 @@ const AadhaarScanner = () => {
                 className="btn-primary"
                 style={styles.mainBtn}
               >
-                Confirm & Continue <ArrowRight size={20} />
+                {t('ConfirmContinue', 'Confirm & Continue')} <ArrowRight size={20} />
               </button>
               
               <button 
                 onClick={() => setStep(1)} 
                 style={styles.secondaryBtn}
               >
-                Retake Photo
+                {t('RetakePhoto', 'Retake Photo')}
               </button>
             </div>
           )}

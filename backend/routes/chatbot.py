@@ -7,9 +7,14 @@ chatbot_bp = Blueprint('chatbot', __name__)
 
 # --- MASSIVE KEYWORD LIBRARY ---
 GREETINGS = {
-    "hi", "hello", "hey", "namaste", "pranam", "vanakkam", "vanakam", "namaskara", "adaab", "satsriakal",
-    "good morning", "good evening", "good afternoon", "gm", "ge", "ga", "help", "support", "greet", "start",
+    "hi", "hello", "hey", "hii", "hiii", "hey there", "namaste", "pranam", "vanakkam", "vanakam", "namaskara", "adaab", "satsriakal",
+    "good morning", "good evening", "good afternoon", "gm", "ge", "ga", "help", "support", "greet", "start", "hi satya", "hello satya",
     "नमस्ते", "नमस्कार", "हैलो", "हाय", "வணக்கம்", "నమస్కారం", "ನಮಸ್ಕಾರ", "നമസ്കാരം", "നമസ്തേ", "નમસ્તે", "নমস্কার", "नमस्कार"
+}
+
+THANKS = {
+    "thanks", "thank you", "thank u", "thx", "thnk u", "shukriya", "dhanyawad", "dhanyavaad", "nandri", "dhanyavadagalu",
+    "धन्यवाद", "शुक्रिया", "நன்றி", "ಧನ್ಯವಾದಗಳು", "ಧನ್ಯವಾದ", "ధన్యవాదాలు", "നന്ദി", "આભાર", "ধন্যবাদ"
 }
 
 # Exhaustive Mapping: 150+ keywords found in schemes and common user queries
@@ -62,8 +67,19 @@ CATEGORY_MAP = {
     "certificate": "documents", "card": "documents", "ration": "documents", "voter": "documents", 
     "passport": "documents", "verify": "documents", "link": "documents", "apply": "documents",
     "digilocker": "documents", "birth": "documents", "caste": "documents", "income": "documents",
-    "domicile": "documents", "residence": "documents", "address": "documents"
+    "domicile": "documents", "residence": "documents", "address": "documents",
+
+    # States
+    "maharashtra": "state_maharashtra", "karnataka": "state_karnataka", "tamil nadu": "state_tamil_nadu",
+    "tamilnadu": "state_tamil_nadu", "up": "state_uttar_pradesh", "uttar pradesh": "state_uttar_pradesh",
+    "west bengal": "state_west_bengal", "bengal": "state_west_bengal", "gujarat": "state_gujarat",
+    "rajasthan": "state_rajasthan", "kerala": "state_kerala", "punjab": "state_punjab",
+    "delhi": "state_delhi", "haryana": "state_haryana", "bihar": "state_bihar", "mp": "state_madhya_pradesh"
 }
+
+STATE_OPTIONS = [
+    "Maharashtra", "Karnataka", "Tamil Nadu", "Uttar Pradesh", "West Bengal", "Gujarat", "Rajasthan", "Kerala", "Punjab"
+]
 
 # Matches that boost retrieval confidence
 SCHEME_BOOSTER = set(CATEGORY_MAP.keys()) | {
@@ -128,10 +144,18 @@ def chat():
         msg = STATIC_UI_CACHE["greeting"].get(target_lang, STATIC_UI_CACHE["greeting"]["en"])
         return jsonify({"response": msg, "suggestions": get_localized_suggestions(target_lang)}), 200
 
-    q_lower = query.lower()
+    q_lower = query.lower().strip().replace("!", "").replace(".", "")
+    
+    # Check for Greetings
     if q_lower in GREETINGS or any(g in q_lower for g in ["who are you", "what are you", "help me"]):
         msg = STATIC_UI_CACHE["greeting"].get(target_lang, STATIC_UI_CACHE["greeting"]["en"])
         return jsonify({"response": msg, "suggestions": get_localized_suggestions(target_lang)}), 200
+
+    # Check for Thank You
+    if any(t in q_lower for t in THANKS):
+        thanks_msg = "You're very welcome! I am happy to help. Do you have any other questions about government schemes?"
+        response_text = translate_from_english(thanks_msg, target_lang)
+        return jsonify({"response": response_text, "suggestions": get_localized_suggestions(target_lang)}), 200
 
     english_query = translate_to_english(query) if target_lang != 'en' else query
     
@@ -139,8 +163,17 @@ def chat():
     faqs = list(db.faqs.find({}, {"_id": 0}))
 
     # Punctuation cleaning
-    eq_lower = english_query.lower().replace("?", "").replace(".", "").replace(",", "")
+    eq_lower = english_query.lower().replace("?", "").replace(".", "").replace(",", "").strip()
     
+    # --- SPECIAL: STATE MENU ---
+    if eq_lower == "state" or any(s in eq_lower for g in ["which state", "my state", "state list"] for s in [g]):
+        prompt = "Which state are you from? Please select or type your state name."
+        response_text = translate_from_english(prompt, target_lang)
+        # Localize state options
+        from .translator_utils import translate_batch_from_english
+        localized_states = translate_batch_from_english(STATE_OPTIONS, target_lang)
+        return jsonify({"response": response_text, "suggestions": localized_states, "detected_lang": detected_lang}), 200
+
     # Category detection (Improved: checks each word)
     matched_cat = None
     query_words = eq_lower.split()
@@ -153,7 +186,12 @@ def chat():
     if matched_cat:
         cat_faqs = [f for f in faqs if f.get("category") == matched_cat]
         if cat_faqs:
-            intro = f"I found several schemes related to {matched_cat.capitalize()}. Here are the most popular ones:"
+            display_name = matched_cat.replace("state_", "").replace("_", " ").title()
+            if "state_" in matched_cat:
+                intro = f"Here are the major government schemes available in {display_name}:"
+            else:
+                intro = f"I found several schemes related to {display_name}."
+            
             response_text = translate_from_english(intro, target_lang)
             suggestions = [f.get(target_lang, f.get("en", f)).get("question", "Scheme Info") for f in cat_faqs[:5]]
             return jsonify({"response": response_text, "suggestions": suggestions, "detected_lang": detected_lang}), 200

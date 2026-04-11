@@ -69,15 +69,17 @@ const styles = {
     margin: '0 auto',
   },
   title: {
-    fontSize: '3.5rem',
-    marginBottom: '20px',
-    lineHeight: 1.1,
+    fontSize: '3rem',
+    marginBottom: '15px',
+    lineHeight: 1.4,
+    fontWeight: 800,
   },
   subtitle: {
-    fontSize: '1.25rem',
-    color: 'var(--text-muted)',
+    fontSize: '1.2rem',
+    color: 'var(--text-light)',
     marginBottom: '40px',
-    fontWeight: 300,
+    fontWeight: 500,
+    lineHeight: 1.6,
   },
   ctaGroup: {
     display: 'flex',

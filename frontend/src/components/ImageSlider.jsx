@@ -1,56 +1,68 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const ImageSlider = () => {
+  const { t } = useTranslation();
   const images = [
     {
       url: '/slider/1.png',
       title: 'Farmers & Villagers',
-      subtitle: 'Supporting the backbone of India'
+      subtitle: 'Supporting the backbone of India',
+      key: '1'
     },
     {
       url: '/slider/2.png',
       title: 'Empowering Women',
-      subtitle: 'Unlocking opportunities for entrepreneurs'
+      subtitle: 'Unlocking opportunities for entrepreneurs',
+      key: '2'
     },
     {
       url: '/slider/4.jpg',
       title: 'Strong Leadership',
-      subtitle: 'Committed to serving every citizen'
+      subtitle: 'Committed to serving every citizen',
+      key: '3'
     },
     {
       url: '/slider/5.jpg',
       title: 'Brighter Future',
-      subtitle: 'Investing in our next generation'
+      subtitle: 'Investing in our next generation',
+      key: '4'
     },
     {
       url: '/slider/6.png',
       title: 'Unity in Diversity',
-      subtitle: 'Schemes for every community and region'
+      subtitle: 'Schemes for every community and region',
+      key: '5'
     },
     {
       url: '/slider/7.png',
       title: 'Accessible Governance',
-      subtitle: 'Bringing services directly to your doorstep'
+      subtitle: 'Bringing services directly to your doorstep',
+      key: '6'
     },
     {
       url: '/slider/8.jpg',
       title: 'Nari Shakti',
-      subtitle: 'Empowering women across the nation'
+      subtitle: 'Empowering women across the nation',
+      key: '7'
     },
     {
       url: '/slider/9.png',
       title: 'Village Communities',
-      subtitle: 'Building strong communal bonds'
+      subtitle: 'Building strong communal bonds',
+      key: '8'
     },
     {
       url: '/slider/10.png',
       title: 'Local Markets',
-      subtitle: 'Boosting rural economy and livelihoods'
+      subtitle: 'Boosting rural economy and livelihoods',
+      key: '9'
     },
     {
       url: '/slider/11.png',
       title: 'Rural Education',
-      subtitle: 'Knowledge for a better tomorrow'
+      subtitle: 'Knowledge for a better tomorrow',
+      key: '10'
     }
   ];
 
@@ -90,8 +102,8 @@ const ImageSlider = () => {
           
           <div style={styles.overlay}>
             <div style={styles.content}>
-              <h2 style={styles.slideTitle}>{image.title}</h2>
-              <p style={styles.slideSubtitle}>{image.subtitle}</p>
+              <h2 style={styles.slideTitle}>{t('Slider' + image.key + 'Title', image.title)}</h2>
+              <p style={styles.slideSubtitle}>{t('Slider' + image.key + 'Subtitle', image.subtitle)}</p>
             </div>
           </div>
         </div>

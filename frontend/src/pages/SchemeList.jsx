@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search, Filter, AlertCircle, X, Target, ClipboardList, Info, ExternalLink, ShieldCheck } from 'lucide-react';
+import { Search, Filter, AlertCircle, X, Target, ClipboardList, Info, ExternalLink, ShieldCheck, CheckCircle, Sparkles } from 'lucide-react';
 
 const SchemeList = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [schemes, setSchemes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -24,11 +24,11 @@ const SchemeList = () => {
 
   useEffect(() => {
     fetchSchemes();
-  }, []);
+  }, [i18n.language]);
 
   const fetchSchemes = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/schemes/');
+      const response = await fetch(`http://localhost:5000/api/schemes/?lang=${i18n.language}`);
       if (!response.ok) throw new Error(t('FetchError', "Failed to fetch"));
       const data = await response.json();
       setSchemes(data);
@@ -171,13 +171,26 @@ const SchemeList = () => {
 
             <div style={styles.modalBody}>
               <div style={styles.infoGrid}>
-                {/* Overview Section */}
+                  {/* Overview Section */}
                   <div style={styles.infoCard}>
                     <div style={styles.cardHeader}>
                       <Info size={18} color="var(--primary-color)" />
                       <h4 style={styles.infoCardTitle}>{t('SchemeOverview')}</h4>
                     </div>
                     <p style={styles.cardText}>{selectedScheme.description}</p>
+                  </div>
+
+                  {/* Benefits Section (New) */}
+                  <div style={styles.infoCard}>
+                    <div style={styles.cardHeader}>
+                      <div style={{...styles.iconWrapperIcon, background: 'rgba(52, 211, 153, 0.1)'}}>
+                        <Sparkles size={20} color="#34d399" />
+                      </div>
+                      <h4 style={styles.infoCardTitle}>{t('KeyBenefits', 'Main Benefits')}</h4>
+                    </div>
+                    <p style={styles.cardText}>
+                      {selectedScheme.benefits || t('BenefitsDefault', 'Provides financial assistance, social security, and direct support to eligible citizens as per government norms.')}
+                    </p>
                   </div>
 
                   {/* Beneficiaries Section */}
@@ -195,28 +208,51 @@ const SchemeList = () => {
                   {selectedScheme.rules && (
                     <div style={styles.infoCard}>
                       <div style={styles.cardHeader}>
-                        <ShieldCheck size={18} color="#a855f7" />
+                        <div style={{...styles.iconWrapperIcon, background: 'rgba(168, 85, 247, 0.1)'}}>
+                          <ShieldCheck size={20} color="#a855f7" />
+                        </div>
                         <h4 style={styles.infoCardTitle}>{t('EligibilityCriteria')}</h4>
                       </div>
-                      <ul style={styles.detailList}>
-                        {selectedScheme.rules?.min_age && <li>{t('MinAge')}: <strong>{selectedScheme.rules.min_age}</strong></li>}
-                        {selectedScheme.rules?.max_age && <li>{t('MaxAge')}: <strong>{selectedScheme.rules.max_age}</strong></li>}
-                        {selectedScheme.rules?.max_income && <li>{t('MaxIncome')}: <strong>₹{selectedScheme.rules.max_income}</strong></li>}
-                        <li>{t('AllowedCategories', 'Supported Categories')}: <strong>{Array.isArray(selectedScheme.rules?.allowed_categories) ? selectedScheme.rules.allowed_categories.join(', ') : t('AllCategories', 'All Categories')}</strong></li>
-                      </ul>
+                      <div style={styles.rulesGrid}>
+                        <div style={styles.ruleItem}>
+                          <span style={styles.ruleLabel}>{t('AgeLimit', 'Age Limit')}:</span>
+                          <span style={styles.ruleValue}>{selectedScheme.rules.min_age} - {selectedScheme.rules.max_age} {t('Years', 'Years')}</span>
+                        </div>
+                        <div style={styles.ruleItem}>
+                          <span style={styles.ruleLabel}>{t('IncomeLimit', 'Income Limit')}:</span>
+                          <span style={styles.ruleValue}>₹{selectedScheme.rules.max_income || t('NoLimit', 'No Limit')}</span>
+                        </div>
+                        <div style={styles.ruleItem}>
+                          <span style={styles.ruleLabel}>{t('StateRestrictions', 'Location')}:</span>
+                          <span style={styles.ruleValue}>{selectedScheme.state || t('Central', 'Central')}</span>
+                        </div>
+                      </div>
                     </div>
                   )}
 
                   {/* Application Section */}
-                  {selectedScheme.official_website && (
-                    <div style={styles.infoCard}>
-                      <div style={styles.cardHeader}>
-                        <ClipboardList size={18} color="#f59e0b" />
-                        <h4 style={styles.infoCardTitle}>{t('HowToApply')}</h4>
+                  <div style={styles.infoCard}>
+                    <div style={styles.cardHeader}>
+                      <div style={{...styles.iconWrapperIcon, background: 'rgba(245, 158, 11, 0.1)'}}>
+                        <ClipboardList size={20} color="#f59e0b" />
                       </div>
-                      <p style={styles.cardText}>{selectedScheme.application_process}</p>
+                      <h4 style={styles.infoCardTitle}>{t('HowToApply')}</h4>
                     </div>
-                  )}
+                    <div style={styles.cardText}>
+                      {selectedScheme.steps ? (
+                        <div style={styles.stepsList}>
+                          {selectedScheme.steps.split(/[।\.!\?]\s*/).filter(s => s.trim()).map((step, idx) => (
+                            <div key={idx} style={styles.stepItem}>
+                              <div style={styles.stepNumber}>{idx + 1}</div>
+                              <p>{step.trim()}{selectedScheme.steps.includes('।') ? '।' : '.'}</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p>{selectedScheme.application_process || t('StepsDefault')}</p>
+                      )}
+                    </div>
+                  </div>
               </div>
 
               {/* Action Section */}
@@ -397,8 +433,17 @@ const styles = {
   cardHeader: {
     display: 'flex',
     alignItems: 'center',
-    gap: '10px',
-    marginBottom: '12px',
+    gap: '12px',
+    marginBottom: '15px',
+  },
+  iconWrapperIcon: {
+    width: '32px',
+    height: '32px',
+    borderRadius: '50%',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
   },
   infoCardTitle: {
     fontSize: '1rem',
@@ -427,6 +472,56 @@ const styles = {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
     gap: '10px',
+  },
+  rulesGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+    gap: '15px',
+    marginTop: '5px',
+  },
+  ruleItem: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+    padding: '10px',
+    background: 'rgba(255,255,255,0.02)',
+    borderRadius: '8px',
+    border: '1px solid rgba(255,255,255,0.03)',
+  },
+  ruleLabel: {
+    fontSize: '0.75rem',
+    textTransform: 'uppercase',
+    color: 'var(--text-muted)',
+    letterSpacing: '0.05em',
+  },
+  ruleValue: {
+    fontSize: '1rem',
+    fontWeight: 600,
+    color: '#fff',
+  },
+  stepsList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+    marginTop: '10px',
+  },
+  stepItem: {
+    display: 'flex',
+    gap: '15px',
+    alignItems: 'flex-start',
+  },
+  stepNumber: {
+    minWidth: '24px',
+    height: '24px',
+    borderRadius: '50%',
+    background: 'var(--primary-color)',
+    color: 'white',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    fontSize: '0.8rem',
+    fontWeight: 700,
+    marginTop: '2px',
   },
   modalFooter: {
     padding: '20px 30px',
