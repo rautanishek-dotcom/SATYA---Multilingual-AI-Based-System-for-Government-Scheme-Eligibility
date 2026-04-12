@@ -10,17 +10,16 @@ const FloatingChatbot = () => {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedLang, setSelectedLang] = useState('auto');
   const [suggestions, setSuggestions] = useState([]);
-  const [welcomeMessage, setWelcomeMessage] = useState('Hello! I am SATYA, your Govt Schemes Assistant. How can I help you today?');
+  const [welcomeMessage, setWelcomeMessage] = useState(t('ChatWelcome'));
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
     // Fetch localized initial suggestions and greeting
     const fetchLocalization = async () => {
       try {
-        const langParam = selectedLang === 'auto' ? '' : `?lang=${selectedLang}`;
-        const response = await fetch(`http://localhost:5000/api/chatbot/suggestions${langParam}`);
+        const langCode = i18n.language || 'en';
+        const response = await fetch(`http://localhost:5000/api/chatbot/suggestions?lang=${langCode}`);
         const data = await response.json();
         if (data.suggestions) setSuggestions(data.suggestions);
         if (data.welcome_message) setWelcomeMessage(data.welcome_message);
@@ -29,7 +28,7 @@ const FloatingChatbot = () => {
       }
     };
     fetchLocalization();
-  }, [selectedLang]);
+  }, [i18n.language, t]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -75,12 +74,13 @@ const FloatingChatbot = () => {
     setSuggestions([]);
 
     try {
+      const langCode = i18n.language || 'en';
       const response = await fetch('http://localhost:5000/api/chatbot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           query: userMsg,
-          lang: selectedLang === 'auto' ? null : selectedLang // null for auto-detect
+          lang: langCode
         })
       });
       const data = await response.json();
@@ -93,12 +93,17 @@ const FloatingChatbot = () => {
       }
     } catch (error) {
       console.error(error);
-      setMessages(prev => [...prev, { text: t('ChatError', "Sorry, I am having trouble connecting to the server."), isBot: true }]);
-      setSuggestions([
-        "What is SATYA?",
-        "How to check my eligibility?",
-        "What schemes are available for farmers?",
-      ]);
+      setMessages(prev => [...prev, { text: t('ChatError', "I am currently having some technical difficulties. Please try again or select from the options below."), isBot: true }]);
+      // Keep existing suggestions or show common ones if empty
+      if (!suggestions || suggestions.length === 0) {
+          setSuggestions([
+            "Main Menu",
+            "List All Schemes",
+            "What is SATYA?",
+            "How to check my eligibility?",
+            "What is Ayushman Bharat?"
+          ]);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -113,19 +118,6 @@ const FloatingChatbot = () => {
   const handleSuggestionClick = (question) => {
     handleSend(question);
   };
-
-  const languages = [
-    { code: 'auto', name: 'Auto-Detect' },
-    { code: 'en', name: 'English' },
-    { code: 'hi', name: 'Hindi (हिंदी)' },
-    { code: 'ta', name: 'Tamil (தமிழ்)' },
-    { code: 'te', name: 'Telugu (తెలుగు)' },
-    { code: 'kn', name: 'Kannada (ಕನ್ನಡ)' },
-    { code: 'mr', name: 'Marathi (मराठी)' },
-    { code: 'bn', name: 'Bengali (বাংলা)' },
-    { code: 'gu', name: 'Gujarati (ગુજરાતી)' },
-    { code: 'ml', name: 'Malayalam (മലയാളം)' },
-  ];
 
   return (
     <div style={styles.wrapper}>
@@ -150,15 +142,6 @@ const FloatingChatbot = () => {
               <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-light)' }}>{t('ChatAssistant', 'SATYA Assistant')}</h3>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <select 
-                value={selectedLang} 
-                onChange={(e) => setSelectedLang(e.target.value)}
-                style={styles.langSelect}
-              >
-                {languages.map(l => (
-                  <option key={l.code} value={l.code}>{l.name}</option>
-                ))}
-              </select>
               <button style={styles.closeBtn} onClick={() => setIsOpen(false)}>
                 <X size={20} color="var(--text-muted)" />
               </button>
@@ -166,11 +149,6 @@ const FloatingChatbot = () => {
           </div>
 
           <div style={styles.messageArea}>
-            <div style={styles.botMessageContainer}>
-              <div style={styles.botMessage}>
-                {welcomeMessage}
-              </div>
-            </div>
             {messages.map((msg, idx) => (
               <div key={idx} style={{ 
                 ...styles.messageBubble, 

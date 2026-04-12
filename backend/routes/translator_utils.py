@@ -71,16 +71,25 @@ def load_cache():
             return {}
     return {}
 
-def save_cache_to_disk():
-    global _cache_dirty
+_last_save_time = 0
+
+def save_cache_to_disk(force=False):
+    global _cache_dirty, _last_save_time
     if not _cache_dirty:
         return
+        
+    current_time = time.time()
+    # Throttling disk writes to every 10 seconds unless forced
+    if not force and (current_time - _last_save_time < 10):
+        return
+        
     os.makedirs(CACHE_DIR, exist_ok=True)
     try:
         with _cache_lock:
             with open(CACHE_FILE, 'w', encoding='utf-8') as f:
                 json.dump(PERSISTENT_CACHE, f, ensure_ascii=False, indent=2)
             _cache_dirty = False
+            _last_save_time = current_time
     except:
         pass
 
@@ -107,8 +116,10 @@ def _translate_single(text, target_lang):
             if translated:
                 return translated
         except Exception as e:
+            if "TooManyRequests" in str(e) or "429" in str(e):
+                break # Hard abort on rate limits
             pass
-        time.sleep(0.5 * (attempt + 1))
+        time.sleep(0.5)
     return text  # Return original on all failures
 
 # ============ LANGUAGE DETECTION ============
@@ -159,20 +170,11 @@ def translate_from_english(text, target_lang):
     if cached:
         return cached
 
-    # For long compound text, split and translate parts
+    # For long compound text, split and translate parts in parallel
     if len(text) > 100 and ('. ' in text or '\n' in text):
         separator = '\n' if '\n' in text else '. '
         parts = [p.strip() for p in text.split(separator) if p.strip()]
-        translated_parts = []
-        for p in parts:
-            pc = PERSISTENT_CACHE.get(f"{target_lang}:{p}")
-            if pc:
-                translated_parts.append(pc)
-            else:
-                tr = _translate_single(p, target_lang)
-                if tr:
-                    cache_put(f"{target_lang}:{p}", tr)
-                translated_parts.append(tr)
+        translated_parts = translate_batch_from_english(parts, target_lang)
         result = separator.join(translated_parts)
         if result:
             cache_put(cache_key, result)
@@ -214,35 +216,103 @@ def translate_batch_from_english(texts, target_lang):
     fragment_results = {}
     to_translate = []
 
+    # Hardcoded Proper Nouns for specific regional accuracy
+    PROPER_NOUN_FIXES = {
+        "Maharashtra": {"hi": "महाराष्ट्र", "mr": "महाराष्ट्र", "ta": "மகாராஷ்டிரா", "te": "మహారాష్ట్ర"},
+        "Karnataka": {"hi": "कर्नाटक", "kn": "ಕರ್ನಾಟಕ", "ta": "கர்நாடகா", "te": "కర్ణాటక"},
+        "Tamil Nadu": {"hi": "तमिलनाडु", "ta": "தமிழ்நாடு", "te": "తమిళనాడు"},
+        "Gujarat": {"hi": "गुजरात", "gu": "ગુજરાત", "te": "గుజరాత్"},
+        "Punjab": {"hi": "पंजाब", "te": "పంజాబ్"},
+        "Bihar": {"hi": "बिहार", "te": "బీహార్"},
+        "Kerala": {"hi": "केरल", "ml": "കേരളം", "te": "కేరళ"},
+        "Central": {"hi": "अखिल भारतीय", "mr": "अखिल भारतीय", "ta": "அகில இந்திய", "te": "అఖిల భారత"},
+        "All India": {"hi": "अखिल भारतीय", "mr": "अखिल भारतीय", "ta": "அகில இந்திய", "te": "అఖిల భారత"},
+        "PM": {"hi": "पीएम", "mr": "पीएम", "ta": "பிஎம்", "te": "పీఎం"},
+        "AP": {"hi": "एपी", "ta": "ஏபி", "te": "ఏపీ"},
+        "UP": {"hi": "यूपी", "ta": "యూపీ", "te": "యూపీ"},
+        "MP": {"hi": "एमपी", "mr": "एमपी", "te": "ఎంపీ"},
+        "eVidya": {"hi": "ई-विद्या", "mr": "ई-विद्या", "ta": "ஈ-வித்யா", "te": "ఈ-విద్యా"},
+        "SC": {"hi": "एससी", "ta": "எஸ்சி", "te": "ఎస్సీ"},
+        "ST": {"hi": "एसटी", "ta": "எஸ்டி", "te": "ఎస్టీ"},
+        "BPL": {"hi": "बीपीएल", "ta": "பிபிஎல்", "te": "బీపీఎల్"},
+    }
+
     for frag in unique_fragments:
         if not frag:
             fragment_results[frag] = frag
             continue
-        cached = PERSISTENT_CACHE.get(f"{target_lang}:{frag}")
+            
+        frag_clean = frag.strip()
+            
+        # Check hardcoded fixes first
+        if frag_clean in PROPER_NOUN_FIXES and target_lang in PROPER_NOUN_FIXES[frag_clean]:
+            fragment_results[frag] = PROPER_NOUN_FIXES[frag_clean][target_lang]
+            continue
+
+        cache_key = f"{target_lang}:{frag_clean}"
+        cached = PERSISTENT_CACHE.get(cache_key)
+        
+        if not cached:
+            # Case-insensitive fallback
+            search_key = cache_key.lower()
+            for k, v in PERSISTENT_CACHE.items():
+                if k.lower() == search_key:
+                    cached = v
+                    break
+                    
         if cached:
             fragment_results[frag] = cached
         else:
-            to_translate.append(frag)
+            to_translate.append(frag_clean)
 
-    # 3. Translate missing fragments in parallel using thread pool
+    # 3. Translate missing fragments iteratively in grouped batches
     if to_translate:
-        from concurrent.futures import ThreadPoolExecutor, as_completed
+        batch_size = 10 # Send 10 strings per HTTP request
+        grouped_batches = [to_translate[i:i + batch_size] for i in range(0, len(to_translate), batch_size)]
+        
+        for g_batch in grouped_batches:
+            # Wrap short fragments (likely titles) in context to help Google Translate
+            wrapped_batch = []
+            for item in g_batch:
+                if len(item.split()) <= 5:
+                    wrapped_batch.append(f"Title: {item}")
+                else:
+                    wrapped_batch.append(item)
 
-        def translate_one(text):
-            result = _translate_single(text, target_lang)
-            return (text, result)
+            combined_text = " \n\n ".join(wrapped_batch)
+            res = _translate_single(combined_text, target_lang)
+            
+            # If the proxy failed entirely, do not map or cache as success
+            if not res or res.strip() == combined_text.strip():
+                for frag in g_batch:
+                    fragment_results[frag] = frag
+                continue
+                
+            translated_arr = [s.strip() for s in res.split('\n\n') if s.strip()]
+            
+            # Clean "Title: " prefix (more robustly)
+            cleaned_translations = []
+            for s in translated_arr:
+                # Remove common Title prefixes in various languages
+                s_clean = s
+                if ":" in s_clean:
+                    parts = s_clean.split(":", 1)
+                    prefix = parts[0].strip().lower()
+                    if prefix in ["शीर्षक", "தலைப்பு", "title", "மகுடம்", "제목", "नाव", "नाम", "தலைப்பு"]:
+                        s_clean = parts[1].strip()
+                
+                # Strip potential quotes
+                s_clean = s_clean.strip(' "\"\'')
+                cleaned_translations.append(s_clean)
 
-        max_workers = min(8, max(1, len(to_translate)))
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = [executor.submit(translate_one, text) for text in to_translate]
-            for future in as_completed(futures):
-                try:
-                    original, translated = future.result(timeout=15)
-                    fragment_results[original] = translated
-                    if translated:
-                        cache_put(f"{target_lang}:{original}", translated)
-                except:
-                    pass
+            # Map results if segment count matches
+            if len(cleaned_translations) == len(g_batch):
+                for orig, trans in zip(g_batch, cleaned_translations):
+                    fragment_results[orig] = trans
+                    cache_put(f"{target_lang}:{orig}", trans)
+            else:
+                for frag in g_batch:
+                    fragment_results[frag] = frag
 
         save_cache_to_disk()
 

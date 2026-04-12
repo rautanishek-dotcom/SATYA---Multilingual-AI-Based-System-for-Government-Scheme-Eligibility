@@ -49,16 +49,24 @@ const SchemeList = () => {
                             (s.target_beneficiaries?.toLowerCase().includes(selectedFilter.toLowerCase()) || 
                              s.description?.toLowerCase().includes(selectedFilter.toLowerCase()));
       
-      const schemeState = s.state || 'All India';
+      const schemeState = (s.rules && s.rules.state && s.rules.state.length > 0) ? s.rules.state[0] : (s.state || 'All India');
+      // Fix state matching to handle both English and Localized names
       const matchesState = selectedState === 'All' || 
-                           (selectedState === 'All India' ? schemeState === 'All India' : (schemeState === selectedState || schemeState === 'All India'));
+                           (selectedState === 'All India' ? 
+                             (schemeState === 'All India' || schemeState.toLowerCase() === 'all') : 
+                             (schemeState.toLowerCase() === selectedState.toLowerCase() || 
+                              schemeState === 'All India' || 
+                              schemeState.toLowerCase() === 'all'));
 
       return matchesSearch && matchesFilter && matchesState;
     })
     .sort((a, b) => {
+      const aState = (a.rules && a.rules.state && a.rules.state.length > 0) ? a.rules.state[0] : (a.state || 'All India');
+      const bState = (b.rules && b.rules.state && b.rules.state.length > 0) ? b.rules.state[0] : (b.state || 'All India');
+      
       if (selectedState !== 'All' && selectedState !== 'All India') {
-        const aIsState = a.state === selectedState;
-        const bIsState = b.state === selectedState;
+        const aIsState = aState.toLowerCase() === selectedState.toLowerCase();
+        const bIsState = bState.toLowerCase() === selectedState.toLowerCase();
         if (aIsState && !bIsState) return -1;
         if (!aIsState && bIsState) return 1;
       }
@@ -125,12 +133,14 @@ const SchemeList = () => {
                       fontSize: '0.7rem',
                       fontWeight: 700,
                       textTransform: 'uppercase',
-                      background: (!scheme.state || scheme.state === 'All India') ? 'rgba(79, 70, 229, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                      color: (!scheme.state || scheme.state === 'All India') ? 'var(--primary-color)' : 'var(--secondary-color)',
-                      border: `1px solid ${(!scheme.state || scheme.state === 'All India') ? 'rgba(79, 70, 229, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`,
+                      background: (!scheme.rules?.state || scheme.rules.state[0].toLowerCase() === 'all') ? 'rgba(79, 70, 229, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                      color: (!scheme.rules?.state || scheme.rules.state[0].toLowerCase() === 'all') ? 'var(--primary-color)' : 'var(--secondary-color)',
+                      border: `1px solid ${(!scheme.rules?.state || scheme.rules.state[0].toLowerCase() === 'all') ? 'rgba(79, 70, 229, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`,
                       whiteSpace: 'nowrap'
                     }}>
-                      {(!scheme.state || scheme.state === 'All India') ? t('Central', 'Central') : (scheme.state)}
+                      {(!scheme.rules?.state || scheme.rules.state[0].toLowerCase() === 'all') 
+                        ? t('Central', 'Central') 
+                        : t(scheme.rules.state[0].replace(/[\s_]/g, '').toLowerCase().replace(/^\w/, c => c.toUpperCase()), scheme.rules.state[0].replace('_', ' ').charAt(0).toUpperCase() + scheme.rules.state[0].slice(1))}
                     </span>
                   </div>
                   <p style={styles.cardDesc}>{scheme.description?.substring(0, 100)}...</p>
@@ -224,7 +234,7 @@ const SchemeList = () => {
                         </div>
                         <div style={styles.ruleItem}>
                           <span style={styles.ruleLabel}>{t('StateRestrictions', 'Location')}:</span>
-                          <span style={styles.ruleValue}>{selectedScheme.state || t('Central', 'Central')}</span>
+                          <span style={styles.ruleValue}>{(!selectedScheme.rules?.state || selectedScheme.rules.state[0].toLowerCase() === 'all') ? t('Central', 'Central') : selectedScheme.rules.state[0].replace('_', ' ').charAt(0).toUpperCase() + selectedScheme.rules.state[0].slice(1)}</span>
                         </div>
                       </div>
                     </div>
@@ -241,10 +251,10 @@ const SchemeList = () => {
                     <div style={styles.cardText}>
                       {selectedScheme.steps ? (
                         <div style={styles.stepsList}>
-                          {selectedScheme.steps.split(/[।\.!\?]\s*/).filter(s => s.trim()).map((step, idx) => (
+                          {selectedScheme.steps.split(/(?:\n|\b\d+\.\s*)/).filter(s => s.trim() && !/^[\d\.]+$/.test(s.trim())).map((step, idx) => (
                             <div key={idx} style={styles.stepItem}>
                               <div style={styles.stepNumber}>{idx + 1}</div>
-                              <p>{step.trim()}{selectedScheme.steps.includes('।') ? '।' : '.'}</p>
+                              <p>{step.trim()}</p>
                             </div>
                           ))}
                         </div>

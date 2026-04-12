@@ -74,6 +74,10 @@ def translate_schemes_in_batch(schemes, target_lang):
             if 'special_category' in r and isinstance(r['special_category'], list):
                 if 'all' in r['special_category']: strings_to_translate.append("None")
                 else: strings_to_translate.extend([sc.replace('_', ' ').title() for sc in r['special_category']])
+                
+            if 'state' in r and isinstance(r['state'], list):
+                if 'all' in [st.lower() for st in r['state']]: strings_to_translate.append("All India")
+                else: strings_to_translate.extend([st.replace('_', ' ').title() for st in r['state']])
 
     # 2. Batch Translate
     translated_list = translate_batch_from_english(strings_to_translate, target_lang)
@@ -100,6 +104,10 @@ def translate_schemes_in_batch(schemes, target_lang):
             if 'special_category' in r and isinstance(r['special_category'], list):
                 if 'all' in r['special_category']: r['special_category'] = [trans_map.get("None", "None")]
                 else: r['special_category'] = [trans_map.get(sc.replace('_', ' ').title(), sc) for sc in r['special_category']]
+                
+            if 'state' in r and isinstance(r['state'], list):
+                if 'all' in [st.lower() for st in r['state']]: r['state'] = [trans_map.get("All India", "All India")]
+                else: r['state'] = [trans_map.get(st.replace('_', ' ').title(), st) for st in r['state']]
 
     return schemes
 

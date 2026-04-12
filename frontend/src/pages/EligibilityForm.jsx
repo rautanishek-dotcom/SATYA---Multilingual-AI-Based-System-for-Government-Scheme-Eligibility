@@ -230,11 +230,13 @@ const EligibilityForm = () => {
                           borderRadius: '20px',
                           fontSize: '0.75rem',
                           fontWeight: 600,
-                          background: scheme.state === 'All India' ? 'rgba(79, 70, 229, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                          color: scheme.state === 'All India' ? 'var(--primary-color)' : 'var(--secondary-color)',
-                          border: `1px solid ${scheme.state === 'All India' ? 'rgba(79, 70, 229, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`
+                          background: (!scheme.rules?.state || scheme.rules.state[0].toLowerCase() === 'all')  ? 'rgba(79, 70, 229, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                          color: (!scheme.rules?.state || scheme.rules.state[0].toLowerCase() === 'all')  ? 'var(--primary-color)' : 'var(--secondary-color)',
+                          border: `1px solid ${(!scheme.rules?.state || scheme.rules.state[0].toLowerCase() === 'all')  ? 'rgba(79, 70, 229, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`
                         }}>
-                          {scheme.state === 'All India' ? t('CentralScheme', 'Central Scheme') : t('StateScheme', 'State Scheme')}
+                          {(!scheme.rules?.state || scheme.rules.state[0].toLowerCase() === 'all') 
+                            ? t('Central', 'Central') 
+                            : t(scheme.rules.state[0].replace(/[\s_]/g, '').toLowerCase().replace(/^\w/, c => c.toUpperCase()), scheme.rules.state[0].replace('_', ' ').charAt(0).toUpperCase() + scheme.rules.state[0].slice(1))}
                         </span>
                       </div>
                       <p style={styles.schemeDesc}>{scheme.description}</p>
@@ -344,7 +346,7 @@ const EligibilityForm = () => {
                     <div style={styles.cardText}>
                       {selectedScheme.steps ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                          {selectedScheme.steps.split('. ').map((step, i) => step.trim() && (
+                          {selectedScheme.steps.split(/(?:\n|\b\d+\.\s*)/).filter(s => s.trim() && !/^[\d\.]+$/.test(s.trim())).map((step, i) => (
                             <div key={i} style={{ display: 'flex', gap: '12px' }}>
                               <span style={{ 
                                 minWidth: '24px', 
@@ -358,7 +360,7 @@ const EligibilityForm = () => {
                                 fontWeight: 700,
                                 color: '#fff'
                               }}>{i + 1}</span>
-                              <span>{step.endsWith('.') ? step : step + '.'}</span>
+                              <span>{step.trim()}</span>
                             </div>
                           ))}
                         </div>
