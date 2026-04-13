@@ -95,6 +95,10 @@ def save_cache_to_disk(force=False):
 
 def cache_put(key, value):
     global _cache_dirty
+    # Safety Check: Never cache error messages as translations
+    if not value or "Error 500" in str(value) or "Server Error" in str(value):
+        return
+        
     with _cache_lock:
         PERSISTENT_CACHE[key] = value
         _cache_dirty = True
@@ -113,7 +117,7 @@ def _translate_single(text, target_lang):
         try:
             translator = GoogleTranslator(source='auto', target=target_lang)
             translated = translator.translate(text)
-            if translated:
+            if translated and "Error 500" not in str(translated):
                 return translated
         except Exception as e:
             if "TooManyRequests" in str(e) or "429" in str(e):
