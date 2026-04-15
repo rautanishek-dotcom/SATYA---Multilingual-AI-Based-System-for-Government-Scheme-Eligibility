@@ -115,7 +115,7 @@ const EligibilityForm = () => {
 
             <div style={styles.row}>
               <div style={styles.inputGroup}>
-                <label>{t('DOB', 'Date of Birth')}</label>
+                <label>{t('DateOfBirth', 'Date of Birth')}</label>
                 <input type="date" name="dob" value={formData.dob} onChange={handleChange} required style={styles.input} />
               </div>
               <div style={styles.inputGroup}>

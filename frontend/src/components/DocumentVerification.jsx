@@ -173,7 +173,7 @@ const DocumentVerification = ({ userId, profileData, onVerificationComplete }) =
                                     <input type="text" name="name" value={internalFormData.name} onChange={handleInputChange} style={styles.input} />
                                 </div>
                                 <div style={styles.inputGroup}>
-                                    <label style={styles.inputLabel}>{t('DOB', 'Date of Birth')}</label>
+                                    <label style={styles.inputLabel}>{t('DateOfBirth', 'Date of Birth')}</label>
                                     <input type="date" name="dob" value={internalFormData.dob} onChange={handleInputChange} style={styles.input} />
                                 </div>
                                 <div style={styles.inputGroup}>
@@ -269,28 +269,28 @@ const DocumentVerification = ({ userId, profileData, onVerificationComplete }) =
                         <div style={styles.summaryGrid}>
                             <div style={styles.summaryItem}>
                                 <div style={{display: 'flex', alignItems: 'center', gap: '5px'}}>
-                                    <span style={styles.sumLabel}>Name</span>
+                                    <span style={styles.sumLabel}>{t('Name')}</span>
                                     {verificationStatus?.results?.name === 'Verified' ? <CheckCircle size={12} color="#10b981" /> : <XCircle size={12} color="#ef4444" />}
                                 </div>
                                 <span style={{...styles.sumValue, color: getStatusColor(verificationStatus?.results?.name)}}>{verificationStatus?.extracted_summary?.name || 'Not Scanned'}</span>
                             </div>
                             <div style={styles.summaryItem}>
                                 <div style={{display: 'flex', alignItems: 'center', gap: '5px'}}>
-                                    <span style={styles.sumLabel}>DOB</span>
+                                    <span style={styles.sumLabel}>{t('DateOfBirth')}</span>
                                     {verificationStatus?.results?.dob === 'Verified' ? <CheckCircle size={12} color="#10b981" /> : <XCircle size={12} color="#ef4444" />}
                                 </div>
                                 <span style={{...styles.sumValue, color: getStatusColor(verificationStatus?.results?.dob)}}>{verificationStatus?.extracted_summary?.dob || 'Not Scanned'}</span>
                             </div>
                             <div style={styles.summaryItem}>
                                 <div style={{display: 'flex', alignItems: 'center', gap: '5px'}}>
-                                    <span style={styles.sumLabel}>Income</span>
+                                    <span style={styles.sumLabel}>{t('Income')}</span>
                                     {verificationStatus?.results?.income === 'Verified' ? <CheckCircle size={12} color="#10b981" /> : <XCircle size={12} color="#ef4444" />}
                                 </div>
                                 <span style={{...styles.sumValue, color: getStatusColor(verificationStatus?.results?.income)}}>₹{verificationStatus?.extracted_summary?.income || '0'}</span>
                             </div>
                             <div style={styles.summaryItem}>
                                 <div style={{display: 'flex', alignItems: 'center', gap: '5px'}}>
-                                    <span style={styles.sumLabel}>Category</span>
+                                    <span style={styles.sumLabel}>{t('Category')}</span>
                                     {verificationStatus?.results?.category === 'Verified' ? <CheckCircle size={12} color="#10b981" /> : <XCircle size={12} color="#ef4444" />}
                                 </div>
                                 <span style={{...styles.sumValue, color: getStatusColor(verificationStatus?.results?.category)}}>{verificationStatus?.extracted_summary?.category || 'Not Scanned'}</span>

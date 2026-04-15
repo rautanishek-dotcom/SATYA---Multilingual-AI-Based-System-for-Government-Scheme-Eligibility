@@ -122,6 +122,8 @@ const SchemeList = () => {
       ) : (
         <div style={styles.grid}>
           {filteredAndSortedSchemes.map((scheme, idx) => {
+            const schemeSt = (scheme.rules?.state && scheme.rules.state.length > 0) ? scheme.rules.state[0] : (scheme.state || 'All India');
+            const isCentral = !schemeSt || schemeSt.toLowerCase() === 'all' || schemeSt === 'All India';
             return (
               <div key={idx} className="glass-card" style={styles.card}>
                 <div style={styles.cardContent}>
@@ -133,14 +135,14 @@ const SchemeList = () => {
                       fontSize: '0.7rem',
                       fontWeight: 700,
                       textTransform: 'uppercase',
-                      background: (!scheme.rules?.state || scheme.rules.state[0].toLowerCase() === 'all') ? 'rgba(79, 70, 229, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                      color: (!scheme.rules?.state || scheme.rules.state[0].toLowerCase() === 'all') ? 'var(--primary-color)' : 'var(--secondary-color)',
-                      border: `1px solid ${(!scheme.rules?.state || scheme.rules.state[0].toLowerCase() === 'all') ? 'rgba(79, 70, 229, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`,
+                      background: isCentral ? 'rgba(79, 70, 229, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                      color: isCentral ? 'var(--primary-color)' : 'var(--secondary-color)',
+                      border: `1px solid ${isCentral ? 'rgba(79, 70, 229, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`,
                       whiteSpace: 'nowrap'
                     }}>
-                      {(!scheme.rules?.state || scheme.rules.state[0].toLowerCase() === 'all') 
+                      {isCentral 
                         ? t('Central', 'Central') 
-                        : t(scheme.rules.state[0].replace(/[\s_]/g, '').toLowerCase().replace(/^\w/, c => c.toUpperCase()), scheme.rules.state[0].replace('_', ' ').charAt(0).toUpperCase() + scheme.rules.state[0].slice(1))}
+                        : schemeSt}
                     </span>
                   </div>
                   <p style={styles.cardDesc}>{scheme.description?.substring(0, 100)}...</p>
@@ -234,7 +236,7 @@ const SchemeList = () => {
                         </div>
                         <div style={styles.ruleItem}>
                           <span style={styles.ruleLabel}>{t('StateRestrictions', 'Location')}:</span>
-                          <span style={styles.ruleValue}>{(!selectedScheme.rules?.state || selectedScheme.rules.state[0].toLowerCase() === 'all') ? t('Central', 'Central') : selectedScheme.rules.state[0].replace('_', ' ').charAt(0).toUpperCase() + selectedScheme.rules.state[0].slice(1)}</span>
+                          <span style={styles.ruleValue}>{(() => { const st = (selectedScheme.rules?.state && selectedScheme.rules.state.length > 0) ? selectedScheme.rules.state[0] : (selectedScheme.state || 'All India'); return (!st || st.toLowerCase() === 'all' || st === 'All India') ? t('Central', 'Central') : st; })()}</span>
                         </div>
                       </div>
                     </div>
