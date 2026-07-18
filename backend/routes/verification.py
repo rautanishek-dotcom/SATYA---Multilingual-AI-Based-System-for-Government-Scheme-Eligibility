@@ -992,3 +992,115 @@ def validate_stored_data(user_id):
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+@verification_bp.route('/disability-upload', methods=['POST'])
+def upload_disability_certificate():
+    """
+    Specialized route for Disability Certificate verification with OCR.
+    Extracts name and disability percentage for verification.
+    """
+    try:
+        user_id = request.form.get('user_id')
+        user_input_name = request.form.get('name')
+        user_input_percent = request.form.get('disability_percentage')
+        file = request.files.get('file')
+
+        if not file:
+            return jsonify({"error": "No document uploaded"}), 400
+
+        # Secure path for disability documents
+        DISABILITY_FOLDER = os.path.join(UPLOAD_FOLDER, 'disability')
+        if not os.path.exists(DISABILITY_FOLDER):
+            os.makedirs(DISABILITY_FOLDER)
+
+        # Unique naming
+        ext = file.filename.split('.')[-1]
+        filename = f"{user_id}_disability.{ext}" if user_id and user_id != 'undefined' else f"temp_disability_{int(time.time())}.{ext}"
+        path = os.path.join(DISABILITY_FOLDER, filename)
+        file.save(path)
+
+        # Process Image for OCR
+        img = cv2.imread(path)
+        if img is None:
+            # Maybe it's a PDF? For now, we handle images for OCR. 
+            # If PDF, we'd need another library. Assuming images for this implementation.
+            return jsonify({"status": "Failed", "error": "Invalid image file"}), 200
+
+        # Check Quality
+        ok, msg = SATYAPixelEngine.validate_quality(img)
+        if not ok: return jsonify({"status": "Failed", "error": msg}), 200
+
+        # OCR Extraction
+        proc = SATYAPixelEngine.neural_preprocess(img)
+        raw_text = pytesseract.image_to_string(proc, config='--oem 3 --psm 6', lang='eng+hin')
+        
+        extracted = {"name": "", "percentage": ""}
+        
+        # 1. Extract Disability Percentage (Look for digits followed by % or percentage)
+        percent_match = re.search(r'(\d{1,3})\s*(?:%|percent)', raw_text, re.I)
+        if percent_match:
+            extracted["percentage"] = percent_match.group(1)
+        else:
+            # Fallback regex for "40 PERCENT" or similar
+            nums = re.findall(r'(\d{2})', raw_text)
+            if nums:
+                # Often the disability percentage is a round or significant number in the text
+                valid_percents = [n for n in nums if 40 <= int(n) <= 100]
+                if valid_percents: extracted["percentage"] = valid_percents[0]
+
+        # 2. Extract Name (Structural Match)
+        lines = [l.strip() for l in raw_text.split('\n') if l.strip()]
+        for line in lines[:25]:
+            line_u = line.upper()
+            if any(k in line_u for k in ["NAME", "SHRI", "SMT", "SON OF", "DAUGHTER OF"]):
+                # Clean and validate
+                candidate = re.sub(r'[^A-Za-z\s\.]', '', line).replace("Name", "").replace("NAME", "").strip()
+                if is_valid_name(candidate):
+                    extracted["name"] = candidate
+                    break
+        
+        # Cross-Verification
+        mismatches = []
+        score = 0
+        
+        # Name Check
+        if user_input_name and extracted["name"]:
+            if clean_val_no_space(user_input_name) in clean_val_no_space(extracted["name"]) or \
+               clean_val_no_space(extracted["name"]) in clean_val_no_space(user_input_name):
+                score += 50
+            else:
+                mismatches.append(f"Name mismatch: Card says '{extracted['name']}'")
+        
+        # Percentage Check
+        if user_input_percent and extracted["percentage"]:
+            try:
+                if int(extracted["percentage"]) >= int(user_input_percent):
+                    score += 50
+                else:
+                    mismatches.append(f"Percentage mismatch: Card says {extracted['percentage']}%")
+            except ValueError:
+                pass
+
+        status = "Verified" if score >= 90 else ("Partially Verified" if score >= 40 else "Rejected")
+
+        # Update User in DB if user_id exists
+        if user_id and user_id != 'undefined':
+            db = get_db()
+            db.users.update_one(
+                {"_id": ObjectId(user_id)},
+                {"$set": {"documents.disability": {
+                    "status": status,
+                    "extracted_data": extracted,
+                    "file_path": path,
+                    "verified_at": datetime.now()
+                }}}
+            )
+
+        return jsonify({
+            "status": status,
+            "extracted": extracted,
+            "mismatches": mismatches,
+            "message": "Certificate uploaded and analyzed successfully"
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

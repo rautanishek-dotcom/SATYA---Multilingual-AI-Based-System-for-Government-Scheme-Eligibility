@@ -252,6 +252,27 @@ def translate_batch_from_english(texts, target_lang):
         "SC": {"hi": "एससी", "ta": "எஸ்சி", "te": "ఎస్సీ"},
         "ST": {"hi": "एसटी", "ta": "எஸ்டி", "te": "ఎస్టీ"},
         "BPL": {"hi": "बीपीएल", "ta": "பிபிஎல்", "te": "బీపీఎల్"},
+        "E-Shram": {"hi": "ई-श्रम", "ta": "இ-ஷ்ரம்", "te": "ఈ-శ్రమ్", "mr": "ई-श्रम"},
+        "Jan Dhan": {"hi": "जन धन", "ta": "ஜன் தன்", "te": "జన్ ధన్", "mr": "जन धन"},
+        "Ujjwala": {"hi": "उज्ज्वला", "ta": "உஜ்வாலா", "te": "ఉజ్వల", "mr": "उज्ज्वला"},
+        "Mudra": {"hi": "मुद्रा", "ta": "முத்ரா", "te": "ముద్రా", "mr": "मुद्रा"},
+        "Aadhaar": {"hi": "आधार", "ta": "ஆதார்", "te": "ఆధార్", "mr": "आधार", "kn": "ಆಧಾರ್", "ml": "ಆಧಾರ್", "gu": "આધાર", "bn": "আধার"},
+
+    }
+
+    # --- Term Mapping (Bidirectional Enhancement) ---
+    TERM_MAPPING = {
+        "kisan": "farmer",
+        "mazdoor": "worker",
+        "chatra": "student",
+        "vidyarthi": "student",
+        "divyang": "disabled",
+        "viklang": "disabled",
+        "udyami": "entrepreneur",
+        "mahila": "woman",
+        "nari": "woman",
+        "gramin": "rural",
+        "shehari": "urban"
     }
 
     for frag in unique_fragments:
@@ -260,6 +281,11 @@ def translate_batch_from_english(texts, target_lang):
             continue
             
         frag_clean = frag.strip()
+        frag_lower = frag_clean.lower()
+            
+        # Apply Term Mapping first
+        if frag_lower in TERM_MAPPING:
+            frag_clean = TERM_MAPPING[frag_lower]
             
         # Check hardcoded fixes first
         if frag_clean in PROPER_NOUN_FIXES and target_lang in PROPER_NOUN_FIXES[frag_clean]:
@@ -272,7 +298,9 @@ def translate_batch_from_english(texts, target_lang):
         if not cached:
             # Case-insensitive fallback
             search_key = cache_key.lower()
-            for k, v in PERSISTENT_CACHE.items():
+            with _cache_lock:
+                cache_items = list(PERSISTENT_CACHE.items())
+            for k, v in cache_items:
                 if k.lower() == search_key:
                     cached = v
                     break
@@ -288,15 +316,7 @@ def translate_batch_from_english(texts, target_lang):
         grouped_batches = [to_translate[i:i + batch_size] for i in range(0, len(to_translate), batch_size)]
         
         for g_batch in grouped_batches:
-            # Wrap short fragments (likely titles) in context to help Google Translate
-            wrapped_batch = []
-            for item in g_batch:
-                if len(item.split()) <= 5:
-                    wrapped_batch.append(f"Title: {item}")
-                else:
-                    wrapped_batch.append(item)
-
-            combined_text = " \n\n ".join(wrapped_batch)
+            combined_text = "\n[SEP]\n".join(g_batch)
             res = _translate_single(combined_text, target_lang)
             
             # If the proxy failed entirely, do not map or cache as success
@@ -305,29 +325,24 @@ def translate_batch_from_english(texts, target_lang):
                     fragment_results[frag] = frag
                 continue
                 
-            translated_arr = [s.strip() for s in res.split('\n\n') if s.strip()]
+            # Split by the separator, handling potential variations in whitespace/format
+            translated_arr = [s.strip() for s in re.split(r'\n?\s*\[SEP\]\s*\n?', res) if s.strip()]
             
-            # Clean "Title: " prefix (more robustly)
-            cleaned_translations = []
-            for s in translated_arr:
-                # Remove common Title prefixes in various languages
-                s_clean = s
-                if ":" in s_clean:
-                    parts = s_clean.split(":", 1)
-                    prefix = parts[0].strip().lower()
-                    if prefix in ["शीर्षक", "தலைப்பு", "title", "மகுடம்", "제목", "नाव", "नाम", "தலைப்பு"]:
-                        s_clean = parts[1].strip()
+            # If lengths match, we are good. If not, try a fallback split or just use individual translations
+            if len(translated_arr) != len(g_batch):
+                # Fallback to newline if [SEP] was mangled
+                translated_arr = [s.strip() for s in res.split('\n') if s.strip()]
                 
-                # Strip potential quotes
-                s_clean = s_clean.strip(' "\"\'')
-                cleaned_translations.append(s_clean)
-
             # Map results if segment count matches
-            if len(cleaned_translations) == len(g_batch):
-                for orig, trans in zip(g_batch, cleaned_translations):
-                    fragment_results[orig] = trans
-                    cache_put(f"{target_lang}:{orig}", trans)
+            if len(translated_arr) == len(g_batch):
+                for orig, trans in zip(g_batch, translated_arr):
+                    # Clean up any potential artifacts
+                    trans_clean = trans.strip(' "\"\'')
+                    fragment_results[orig] = trans_clean
+                    cache_put(f"{target_lang}:{orig}", trans_clean)
             else:
+                # If batching fails, we could translate individually, but for now we fallback to English
+                # to avoid misaligned translations which are worse than English.
                 for frag in g_batch:
                     fragment_results[frag] = frag
 

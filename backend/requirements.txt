@@ -14,3 +14,6 @@ pyzbar==0.1.9
 numpy==2.2.6
 requests==2.33.1
 dnspython==2.8.0
+# ── Scheme Scraper (added for real-time updation feature) ──
+beautifulsoup4==4.12.3
+lxml==5.2.2

@@ -38,13 +38,13 @@ const DocumentVerification = ({ userId, profileData, onVerificationComplete }) =
         const isAadhaarPreVerified = window.satya_aadhaar_verified === true;
         
         if (!files.aadhaar && !isAadhaarPreVerified) {
-            alert("Aadhaar Card is mandatory for identity verification.");
+            alert(t('AadhaarMandatoryAlert', "Aadhaar Card is mandatory for identity verification."));
             return;
         }
 
         const currentUserId = userId || storedUser.id || storedUser._id;
         if (!currentUserId) {
-            alert("Session expired or User ID missing. Please login again.");
+            alert(t('SessionExpiredAlert', "Session expired or User ID missing. Please login again."));
             setLoading(false);
             return;
         }
@@ -122,7 +122,7 @@ const DocumentVerification = ({ userId, profileData, onVerificationComplete }) =
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || "Verification engine error");
+                throw new Error(errorData.error || t('VerificationEngineError', "Verification engine error"));
             }
 
             const result = await response.json();
@@ -183,10 +183,10 @@ const DocumentVerification = ({ userId, profileData, onVerificationComplete }) =
                                 <div style={styles.inputGroup}>
                                     <label style={styles.inputLabel}>{t('Category', 'Category')}</label>
                                     <select name="category" value={internalFormData.category} onChange={handleInputChange} style={styles.input}>
-                                        <option value="General">General</option>
-                                        <option value="OBC">OBC</option>
-                                        <option value="SC">SC</option>
-                                        <option value="ST">ST</option>
+                                        <option value="General">{t('General')}</option>
+                                        <option value="OBC">{t('OBC')}</option>
+                                        <option value="SC">{t('SC')}</option>
+                                        <option value="ST">{t('ST')}</option>
                                     </select>
                                 </div>
                             </div>
@@ -255,13 +255,13 @@ const DocumentVerification = ({ userId, profileData, onVerificationComplete }) =
                         </div>
                     )}
                     
-                    {(!files.aadhaar && !window.satya_aadhaar_verified) && <p style={styles.helperText}>* Aadhaar is required to unlock scheme results.</p>}
+                    {(!files.aadhaar && !window.satya_aadhaar_verified) && <p style={styles.helperText}>{t('AadhaarRequiredNote')}</p>}
                 </div>
             ) : (
                 <div style={styles.resultSection}>
                     <div style={{ ...styles.statusBadge, backgroundColor: getStatusColor(verificationStatus?.status) }}>
                         {verificationStatus?.status === 'Verified' ? <CheckCircle size={18} /> : verificationStatus?.status === 'Partially Verified' ? <AlertTriangle size={18} /> : <XCircle size={18} />}
-                        <span>{verificationStatus?.status || 'Unknown'} ({verificationStatus?.score || 0}/100)</span>
+                        <span>{verificationStatus?.status ? t(verificationStatus.status.replace(/\s/g, ''), verificationStatus.status) : t('Unknown')} ({verificationStatus?.score || 0}/100)</span>
                     </div>
 
                     <div style={styles.summaryCard}>
@@ -272,14 +272,14 @@ const DocumentVerification = ({ userId, profileData, onVerificationComplete }) =
                                     <span style={styles.sumLabel}>{t('Name')}</span>
                                     {verificationStatus?.results?.name === 'Verified' ? <CheckCircle size={12} color="#10b981" /> : <XCircle size={12} color="#ef4444" />}
                                 </div>
-                                <span style={{...styles.sumValue, color: getStatusColor(verificationStatus?.results?.name)}}>{verificationStatus?.extracted_summary?.name || 'Not Scanned'}</span>
+                                <span style={{...styles.sumValue, color: getStatusColor(verificationStatus?.results?.name)}}>{verificationStatus?.extracted_summary?.name || t('NotScanned')}</span>
                             </div>
                             <div style={styles.summaryItem}>
                                 <div style={{display: 'flex', alignItems: 'center', gap: '5px'}}>
                                     <span style={styles.sumLabel}>{t('DateOfBirth')}</span>
                                     {verificationStatus?.results?.dob === 'Verified' ? <CheckCircle size={12} color="#10b981" /> : <XCircle size={12} color="#ef4444" />}
                                 </div>
-                                <span style={{...styles.sumValue, color: getStatusColor(verificationStatus?.results?.dob)}}>{verificationStatus?.extracted_summary?.dob || 'Not Scanned'}</span>
+                                <span style={{...styles.sumValue, color: getStatusColor(verificationStatus?.results?.dob)}}>{verificationStatus?.extracted_summary?.dob || t('NotScanned')}</span>
                             </div>
                             <div style={styles.summaryItem}>
                                 <div style={{display: 'flex', alignItems: 'center', gap: '5px'}}>

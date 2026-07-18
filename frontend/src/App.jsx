@@ -14,9 +14,17 @@ import AadhaarVerification from './pages/AadhaarVerification';
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('satya_token');
-  
-  if (!token) {
-    return <Navigate to="/login" replace />;
+  if (!token) return <Navigate to="/login" replace />;
+  return children;
+};
+
+const AdminRoute = ({ children }) => {
+  const token = localStorage.getItem('satya_token');
+  const userJson = localStorage.getItem('satya_user');
+  const user = userJson ? JSON.parse(userJson) : null;
+
+  if (!token || !user || user.role !== 'admin') {
+    return <Navigate to="/" replace />;
   }
 
   return children;
@@ -33,7 +41,7 @@ function App() {
           <Route path="/schemes" element={<ProtectedRoute><SchemeList /></ProtectedRoute>} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
           <Route path="/verify" element={<ProtectedRoute><DocumentVerification /></ProtectedRoute>} />
           <Route path="/verify-aadhaar" element={<ProtectedRoute><AadhaarVerification /></ProtectedRoute>} />
 

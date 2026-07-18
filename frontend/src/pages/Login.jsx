@@ -5,7 +5,7 @@ import { Mail, Lock, LogIn } from 'lucide-react';
 
 const Login = () => {
   const { t } = useTranslation();
-  const [formData, setFormData] = useState({ email: '', password: '' });
+  const [formData, setFormData] = useState({ email: '', password: '', role: 'user' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -30,7 +30,13 @@ const Login = () => {
       if (response.ok) {
         localStorage.setItem('satya_token', data.token);
         localStorage.setItem('satya_user', JSON.stringify(data.user));
-        navigate('/');
+        
+        // Redirect based on backend role returned
+        if (data.user.role === 'admin') {
+          navigate('/admin');
+        } else {
+          navigate('/');
+        }
       } else {
         setError(data.error || t('LoginFailed', 'Login failed'));
       }
@@ -45,8 +51,27 @@ const Login = () => {
     <div className="animate-fade-in" style={styles.container}>
       <div className="glass-card" style={styles.card}>
         <div style={styles.header}>
-          <h2 style={{ fontSize: '2rem', marginBottom: '10px' }}>{t('WelcomeBack')}</h2>
+          <h2 style={{ fontSize: '2rem', marginBottom: '10px' }}>
+            {formData.role === 'admin' ? t('AdminLogin', 'Admin Login') : t('WelcomeBack')}
+          </h2>
           <p style={{ color: 'var(--text-muted)' }}>{t('LoginSubtitle')}</p>
+        </div>
+
+        <div style={styles.roleSelector}>
+          <button 
+            type="button"
+            onClick={() => setFormData({ ...formData, role: 'user' })}
+            style={formData.role === 'user' ? styles.activeRole : styles.inactiveRole}
+          >
+            {t('User', 'User')}
+          </button>
+          <button 
+            type="button"
+            onClick={() => setFormData({ ...formData, role: 'admin' })}
+            style={formData.role === 'admin' ? styles.activeRole : styles.inactiveRole}
+          >
+            {t('Admin', 'Admin')}
+          </button>
         </div>
 
         {error && <div style={styles.errorBanner}>{error}</div>}
@@ -164,6 +189,34 @@ const styles = {
     textAlign: 'center',
     marginBottom: '20px',
     border: '1px solid rgba(239, 68, 68, 0.3)',
+  },
+  roleSelector: {
+    display: 'flex',
+    background: 'rgba(0, 0, 0, 0.2)',
+    padding: '5px',
+    borderRadius: 'var(--border-radius)',
+    marginBottom: '25px',
+  },
+  activeRole: {
+    flex: 1,
+    padding: '10px',
+    border: 'none',
+    borderRadius: 'calc(var(--border-radius) - 2px)',
+    background: 'var(--primary-color)',
+    color: 'white',
+    fontWeight: 600,
+    cursor: 'pointer',
+    transition: 'all 0.3s ease',
+  },
+  inactiveRole: {
+    flex: 1,
+    padding: '10px',
+    border: 'none',
+    background: 'transparent',
+    color: 'var(--text-muted)',
+    fontWeight: 500,
+    cursor: 'pointer',
+    transition: 'all 0.3s ease',
   }
 };
 

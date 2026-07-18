@@ -40,7 +40,7 @@ def seed_database():
             "benefits": "Interest subsidies on housing loans and direct financial assistance for house construction.",
             "steps": "1. Visit the PMAY official website. 2. Choose 'Citizen Assessment'. 3. Enter Aadhaar details. 4. Fill out the application form. 5. Submit and track status.",
             "state": "All India",
-            "rules": {"min_age": 18, "max_age": 70, "max_income": 1800000, "allowed_categories": ["all"], "gender": ["all"], "special_category": ["all"]}
+                        "rules": {"min_age": 0, "max_age": 100, "max_income": 120000, "allowed_categories": ["all"], "gender": ["all"], "special_category": ["all"], "residence": "all", "bpl_required": True, "student_status": "any", "min_education": "none"}
         },
         {
             "name": "Ayushman Bharat",
@@ -51,7 +51,7 @@ def seed_database():
             "benefits": "Cashless access to health services for over 1,500 medical procedures.",
             "steps": "1. Visit pmjay.gov.in and check eligibility. 2. Verify identity at an empanelled hospital. 3. Get your Ayushman Card. 4. Use card for cashless treatment.",
             "state": "All India",
-            "rules": {"min_age": 0, "max_age": 100, "max_income": 100000, "allowed_categories": ["all"], "gender": ["all"], "special_category": ["all"]}
+                        "rules": {"min_age": 0, "max_age": 100, "max_income": 120000, "allowed_categories": ["all"], "gender": ["all"], "special_category": ["all"], "residence": "all", "bpl_required": True, "student_status": "any", "min_education": "none"}
         },
         {
             "name": "Pradhan Mantri Kisan Samman Nidhi",
@@ -62,7 +62,7 @@ def seed_database():
             "benefits": "Direct income support of ₹6,000 annually credited to bank accounts.",
             "steps": "1. Go to 'Farmers Corner' on PM-Kisan portal. 2. Click 'New Farmer Registration'. 3. Fill Aadhaar and land details. 4. Submit for verification.",
             "state": "All India",
-            "rules": {"min_age": 18, "max_age": 100, "max_income": 200000, "allowed_categories": ["all"], "gender": ["all"], "special_category": ["all"], "occupation": ["farmer"]}
+                        "rules": {"min_age": 18, "max_age": 100, "max_income": 200000, "allowed_categories": ["all"], "gender": ["all"], "special_category": ["all"], "occupation": ["farmer"], "landholding_max": 5, "residence": "all", "bpl_required": False, "student_status": "any", "min_education": "none"}
         },
         {
             "name": "Pradhan Mantri Mudra Yojana",
@@ -73,7 +73,7 @@ def seed_database():
             "benefits": "Collateral-free loans categorized as Shishu (up to ₹50K), Kishor (up to ₹5L), and Tarun (up to ₹10L).",
             "steps": "1. Prepare a business plan. 2. Approach a bank branch. 3. Fill the Mudra application form. 4. Submit KYC and business proof.",
             "state": "All India",
-            "rules": {"min_age": 18, "max_age": 65, "max_income": 10000000, "allowed_categories": ["all"], "gender": ["all"], "special_category": ["all"]}
+                        "rules": {"min_age": 18, "max_age": 65, "max_income": 10000000, "allowed_categories": ["all"], "gender": ["all"], "special_category": ["all"], "occupation": ["entrepreneur", "business"], "business_type": "any", "residence": "all", "bpl_required": False, "student_status": "any", "min_education": "none"}
         },
         {
             "name": "Sukanya Samriddhi Yojana",
@@ -84,7 +84,7 @@ def seed_database():
             "benefits": "High interest rates (currently 8.2%) and tax savings under Section 80C.",
             "steps": "1. Visit Post Office or Bank with girl child's birth certificate. 2. Fill the SSY application form. 3. Deposit the initial amount (minimum ₹250).",
             "state": "All India",
-            "rules": {"min_age": 0, "max_age": 10, "max_income": 10000000, "allowed_categories": ["all"], "gender": ["female"], "special_category": ["all"]}
+                        "rules": {"min_age": 0, "max_age": 10, "max_income": 10000000, "allowed_categories": ["all"], "gender": ["female"], "special_category": ["all"], "residence": "all", "bpl_required": False, "student_status": "any", "min_education": "none"}
         },
         {
             "name": "Stand Up India Scheme",
@@ -95,7 +95,7 @@ def seed_database():
             "benefits": "Access to high-value credit for starting new manufacturing, services, or trading units.",
             "steps": "1. Visit Standup Mitra portal. 2. Register as a borrower. 3. Choose your bank. 4. Submit project report and KYC documents.",
             "state": "All India",
-            "rules": {"min_age": 18, "max_age": 70, "max_income": 100000000, "allowed_categories": ["sc", "st"], "gender": ["female"], "special_category": ["all"]}
+            "rules": {"min_age": 18, "max_age": 70, "max_income": 100000000, "allowed_categories": ["sc", "st"], "gender": ["female"], "special_category": ["all"], "occupation": ["entrepreneur", "business"]}
         },
         {
             "name": "Atal Pension Yojana",
@@ -139,7 +139,7 @@ def seed_database():
             "benefits": "Free skill certification, industry exposure, and placement assistance.",
             "steps": "1. Register on the Skill India portal. 2. Browse available courses. 3. Find a nearby training center. 4. Enroll and attend classes.",
             "state": "All India",
-            "rules": {"min_age": 14, "max_age": 45, "max_income": 10000000, "allowed_categories": ["all"], "gender": ["all"], "special_category": ["all"]}
+            "rules": {"min_age": 14, "max_age": 45, "max_income": 10000000, "allowed_categories": ["all"], "gender": ["all"], "special_category": ["all"], "student_status": "yes", "min_education": "primary"}
         },
         {
             "name": "Beti Bachao Beti Padhao",
@@ -161,7 +161,18 @@ def seed_database():
             "benefits": "Financial support to farmers suffering crop loss with very low premium rates.",
             "steps": "1. Log in to PMFBY portal. 2. Register your crop for the current season (Kharif/Rabi). 3. Pay the low premium amount. 4. Upload land records.",
             "state": "All India",
-            "rules": {"min_age": 18, "max_age": 100, "max_income": 200000, "allowed_categories": ["all"], "gender": ["all"], "special_category": ["all"], "occupation": ["farmer"]}
+            "rules": {"min_age": 18, "max_age": 100, "max_income": 200000, "allowed_categories": ["all"], "gender": ["all"], "occupation": ["farmer"], "landholding_max": 10}
+        },
+        {
+            "name": "Deendayal Swavlamban Yojana (Disability)",
+            "description": "Empowers persons with disabilities by providing loans for self-employment and skill training.",
+            "official_website": "https://www.nhfdc.nic.in/",
+            "target_beneficiaries": "Persons with more than 40% disability seeking livelihood support.",
+            "application_process": "Apply via NHFDC channelizing agencies or online portal.",
+            "benefits": "Low-interest loans up to ₹50 Lakh and specialized vocational training.",
+            "steps": "1. Verify disability certificate. 2. Register on NHFDC portal. 3. Submit business proposal. 4. Loan disbursement.",
+            "state": "All India",
+            "rules": {"min_age": 18, "max_age": 60, "max_income": 300000, "allowed_categories": ["all"], "gender": ["all"], "disability_required": True, "min_disability": 40, "disability_type": ["locomotor", "visual", "hearing"]}
         },
         {
             "name": "PM Vishwakarma Scheme",

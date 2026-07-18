@@ -4,9 +4,38 @@ import bcrypt
 import jwt
 import os
 import datetime
+from functools import wraps
 
 auth_bp = Blueprint('auth', __name__)
 JWT_SECRET = os.getenv("JWT_SECRET", "super-secret-satya-key")
+
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get('Authorization')
+        if not token:
+            return jsonify({'error': 'Token is missing!'}), 401
+        
+        try:
+            # Remove "Bearer " if present
+            if token.startswith("Bearer "):
+                token = token.split(" ")[1]
+            data = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+            current_user_id = data['user_id']
+            current_user_role = data.get('role', 'user')
+        except Exception as e:
+            return jsonify({'error': 'Token is invalid!', 'details': str(e)}), 401
+        
+        return f(current_user_id, current_user_role, *args, **kwargs)
+    return decorated
+
+def admin_required(f):
+    @wraps(f)
+    def decorated(current_user_id, current_user_role, *args, **kwargs):
+        if current_user_role != 'admin':
+            return jsonify({'error': 'Admin privilege required!'}), 403
+        return f(current_user_id, current_user_role, *args, **kwargs)
+    return decorated
 
 @auth_bp.route('/register', methods=['POST'])
 def register():

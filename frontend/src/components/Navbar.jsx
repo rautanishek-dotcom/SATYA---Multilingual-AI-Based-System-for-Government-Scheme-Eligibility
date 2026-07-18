@@ -21,6 +21,9 @@ const Navbar = () => {
   };
 
   const token = localStorage.getItem('satya_token');
+  const userJson = localStorage.getItem('satya_user');
+  const user = userJson ? JSON.parse(userJson) : null;
+  const isAdmin = user && user.role === 'admin';
 
   return (
     <nav style={styles.nav} className="glass-card">
@@ -60,8 +63,8 @@ const Navbar = () => {
           <Link to="/" style={styles.link}>{t('Home') || 'Home'}</Link>
           <Link to="/schemes" style={styles.link}>{t('Schemes')}</Link>
           <Link to="/check" style={styles.link}>{t('EligibilityEngine')}</Link>
-          <Link to="/verify" style={styles.link}>{t('VerifyDocs', 'Verify Docs')}</Link>
-          <Link to="/admin" style={styles.link}>{t('Admin', 'Admin')}</Link>
+           <Link to="/verify" style={styles.link}>{t('VerifyDocs', 'Verify Docs')}</Link>
+          {isAdmin && <Link to="/admin" style={styles.link}>{t('Admin', 'Admin')}</Link>}
           
           <div style={styles.langSelector}>
             <Globe size={18} />
@@ -105,8 +108,8 @@ const Navbar = () => {
           <Link to="/" style={styles.mobileLink} onClick={() => setIsOpen(false)}>{t('Home')}</Link>
           <Link to="/schemes" style={styles.mobileLink} onClick={() => setIsOpen(false)}>{t('Schemes')}</Link>
           <Link to="/check" style={styles.mobileLink} onClick={() => setIsOpen(false)}>{t('EligibilityEngine')}</Link>
-          <Link to="/verify" style={styles.mobileLink} onClick={() => setIsOpen(false)}>{t('VerifyDocs', 'Verify Docs')}</Link>
-          <Link to="/admin" style={styles.mobileLink} onClick={() => setIsOpen(false)}>{t('Admin', 'Admin')}</Link>
+           <Link to="/verify" style={styles.mobileLink} onClick={() => setIsOpen(false)}>{t('VerifyDocs', 'Verify Docs')}</Link>
+          {isAdmin && <Link to="/admin" style={styles.mobileLink} onClick={() => setIsOpen(false)}>{t('Admin', 'Admin')}</Link>}
           <div style={{ ...styles.mobileLink, ...styles.langSelector }}>
             <Globe size={18} />
             <select 
