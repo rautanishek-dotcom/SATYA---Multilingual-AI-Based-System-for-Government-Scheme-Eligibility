@@ -7,6 +7,8 @@ from routes.chatbot import chatbot_bp
 from routes.verification import verification_bp
 from routes.scraper_status import scraper_bp
 from routes.admin import admin_bp
+from routes.vault_routes import vault_bp
+from routes.eligibility_routes import eligibility_bp
 
 app = Flask(__name__)
 CORS(app)
@@ -25,6 +27,8 @@ app.register_blueprint(chatbot_bp, url_prefix="/api/chatbot")
 app.register_blueprint(verification_bp, url_prefix="/api/verify")
 app.register_blueprint(scraper_bp, url_prefix="/api/scraper")
 app.register_blueprint(admin_bp, url_prefix="/api/admin")
+app.register_blueprint(vault_bp, url_prefix="/api/vault")
+app.register_blueprint(eligibility_bp, url_prefix="/api/eligibility")
 
 @app.route("/")
 def home():

@@ -1,0 +1,4 @@
+Confidence: 63.8%
+Engines used: ['tesseract']
+Text:
+Government of India Passport Surname: RAUT Given Names: ABHISHEK KUMAR Date of Birth: 15/08/2002 Gender: M Passport No: 21234567 Place of Issue: PUNE Issue Date: 01/01/2020 Expiry Date: 31/12/2030

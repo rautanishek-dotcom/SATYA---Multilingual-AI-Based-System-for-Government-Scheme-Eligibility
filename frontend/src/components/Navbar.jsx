@@ -63,7 +63,7 @@ const Navbar = () => {
           <Link to="/" style={styles.link}>{t('Home') || 'Home'}</Link>
           <Link to="/schemes" style={styles.link}>{t('Schemes')}</Link>
           <Link to="/check" style={styles.link}>{t('EligibilityEngine')}</Link>
-           <Link to="/verify" style={styles.link}>{t('VerifyDocs', 'Verify Docs')}</Link>
+           {token && <Link to="/vault" style={styles.link}>{t('Vault', 'Document Vault')}</Link>}
           {isAdmin && <Link to="/admin" style={styles.link}>{t('Admin', 'Admin')}</Link>}
           
           <div style={styles.langSelector}>
@@ -108,7 +108,7 @@ const Navbar = () => {
           <Link to="/" style={styles.mobileLink} onClick={() => setIsOpen(false)}>{t('Home')}</Link>
           <Link to="/schemes" style={styles.mobileLink} onClick={() => setIsOpen(false)}>{t('Schemes')}</Link>
           <Link to="/check" style={styles.mobileLink} onClick={() => setIsOpen(false)}>{t('EligibilityEngine')}</Link>
-           <Link to="/verify" style={styles.mobileLink} onClick={() => setIsOpen(false)}>{t('VerifyDocs', 'Verify Docs')}</Link>
+           {token && <Link to="/vault" style={styles.mobileLink} onClick={() => setIsOpen(false)}>{t('Vault', 'Document Vault')}</Link>}
           {isAdmin && <Link to="/admin" style={styles.mobileLink} onClick={() => setIsOpen(false)}>{t('Admin', 'Admin')}</Link>}
           <div style={{ ...styles.mobileLink, ...styles.langSelector }}>
             <Globe size={18} />

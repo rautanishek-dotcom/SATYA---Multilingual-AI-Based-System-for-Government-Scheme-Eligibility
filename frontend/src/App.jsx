@@ -10,6 +10,8 @@ import Register from './pages/Register';
 import AdminDashboard from './pages/AdminDashboard';
 import DocumentVerification from './pages/DocumentVerification';
 import AadhaarVerification from './pages/AadhaarVerification';
+import DocumentVault from './pages/DocumentVault';
+import AdminDiagnostics from './pages/AdminDiagnostics';
 
 
 const ProtectedRoute = ({ children }) => {
@@ -44,7 +46,8 @@ function App() {
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
           <Route path="/verify" element={<ProtectedRoute><DocumentVerification /></ProtectedRoute>} />
           <Route path="/verify-aadhaar" element={<ProtectedRoute><AadhaarVerification /></ProtectedRoute>} />
-
+          <Route path="/vault" element={<ProtectedRoute><DocumentVault /></ProtectedRoute>} />
+          <Route path="/diagnostics" element={<AdminRoute><AdminDiagnostics /></AdminRoute>} />
         </Routes>
       </div>
       <FloatingChatbot />

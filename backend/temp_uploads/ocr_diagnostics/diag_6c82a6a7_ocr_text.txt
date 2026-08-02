@@ -1,0 +1,4 @@
+Confidence: 59.9%
+Engines used: ['tesseract']
+Text:
+siarvivant Bt India, Nariie] Abhlshex Kurrier Raut DOB: 75/06/2002, Benders ticle: Address:‘Pune, Mahorashtra. 411001

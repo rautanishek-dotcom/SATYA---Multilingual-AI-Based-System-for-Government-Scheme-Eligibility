@@ -1,0 +1,4 @@
+Confidence: 54.5%
+Engines used: ['tesseract', 'tesseract', 'tesseract']
+Text:
+3 £ : £4 {

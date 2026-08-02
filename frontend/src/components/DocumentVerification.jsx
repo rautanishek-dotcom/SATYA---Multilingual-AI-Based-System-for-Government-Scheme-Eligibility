@@ -52,85 +52,61 @@ const DocumentVerification = ({ userId, profileData, onVerificationComplete }) =
         setLoading(true);
         try {
             let lastResult = null;
-            // 1. Upload files
+            let mergedFields = {};
+            const extractEndpoint = '/api/vault/extract';
+
+            // 1. Upload files to the new clean extraction endpoint
             for (const [type, file] of Object.entries(files)) {
-                if (file) {
-                    const uploadData = new FormData();
-                    uploadData.append('file', file);
-                    uploadData.append('doc_type', type);
-                    uploadData.append('user_id', currentUserId);
-                    uploadData.append('name', activeData.name);
-                    uploadData.append('dob', activeData.dob);
-                    uploadData.append('income', activeData.income);
-                    uploadData.append('category', activeData.category);
-                    
-                    const uploadResponse = await fetch('http://localhost:5000/api/verify/upload', {
-                        method: 'POST',
-                        body: uploadData
-                    });
+                if (!file) {
+                    continue;
+                }
 
-                    if (!uploadResponse.ok) {
-                        const errorData = await uploadResponse.json();
-                        throw new Error(errorData.error || `Upload failed for ${type}`);
-                    }
-                    
-                    const uploadResult = await uploadResponse.json();
-                    lastResult = uploadResult;
+                const uploadData = new FormData();
+                uploadData.append('file', file);
+                uploadData.append('user_id', currentUserId);
+                if (type === 'aadhaar') {
+                    uploadData.append('force_engine', 'aadhaar_ocr');
+                }
 
-                    if (uploadResult.raw_text) {
-                        setScanResults(prev => [...prev, ...uploadResult.raw_text]);
-                    }
+                const uploadResponse = await fetch(extractEndpoint, {
+                    method: 'POST',
+                    body: uploadData
+                });
 
-                    // AUTO-FILL & INSTANT VERIFY: Update UI with backend results
-                    if (uploadResult.extracted_data) {
-                        const ext = uploadResult.extracted_data;
-                        setInternalFormData(prev => ({
-                            ...prev,
-                            name: ext.name || prev.name,
-                            dob: ext.dob || prev.dob,
-                            income: ext.income || prev.income,
-                            category: ext.category || prev.category
-                        }));
-                    }
+                const uploadResult = await uploadResponse.json();
+                if (!uploadResponse.ok) {
+                    throw new Error(uploadResult.error || `Upload failed for ${type}`);
+                }
 
-                    // Show instant verification results
-                    if (uploadResult.verificationStatus) {
-                        setVerificationStatus(uploadResult);
-                        setScore(uploadResult.score);
-                        setMismatches(uploadResult.mismatches || []);
-                    }
+                lastResult = uploadResult;
+
+                if (uploadResult.ocr_candidates) {
+                    const logs = uploadResult.ocr_candidates.map((candidate) => `${candidate.engine} (${candidate.lang}): ${candidate.text}`);
+                    setScanResults(prev => [...prev, ...logs]);
+                }
+
+                if (uploadResult.fields) {
+                    mergedFields = { ...mergedFields, ...uploadResult.fields };
+                    setInternalFormData(prev => ({
+                        ...prev,
+                        name: uploadResult.fields.name?.value || uploadResult.fields.full_name?.value || prev.name,
+                        dob: uploadResult.fields.dob?.value || prev.dob,
+                        income: uploadResult.fields.income?.value || prev.income,
+                        category: uploadResult.fields.category?.value || prev.category,
+                    }));
+                }
+
+                if (uploadResult.status) {
+                    setScore(uploadResult.confidence || 0);
+                    setMismatches(uploadResult.missing_fields || []);
                 }
             }
 
-            // 2. Run verification logic
-            // If we already have results from upload, skip manual verify call
-            if (lastResult && lastResult.verificationStatus) {
-                setVerificationStatus(lastResult);
-                setLoading(false);
-                return;
+            if (lastResult) {
+                setVerificationStatus({ ...lastResult, fields: mergedFields });
+                const isSuccess = lastResult.status === 'EXTRACTED';
+                onVerificationComplete?.(isSuccess);
             }
-
-            const response = await fetch('http://localhost:5000/api/verify/verify', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    user_id: currentUserId,
-                    profile_data: activeData,
-                    aadhaar_data: window.satya_aadhaar_data || {}
-                })
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || t('VerificationEngineError', "Verification engine error"));
-            }
-
-            const result = await response.json();
-            setVerificationStatus(result);
-            
-            // Notify parent component
-            const isSuccess = result.status === 'Verified' || result.status === 'Partially Verified';
-            onVerificationComplete?.(isSuccess);
 
         } catch (error) {
             console.error("Verification error:", error);
@@ -260,8 +236,8 @@ const DocumentVerification = ({ userId, profileData, onVerificationComplete }) =
             ) : (
                 <div style={styles.resultSection}>
                     <div style={{ ...styles.statusBadge, backgroundColor: getStatusColor(verificationStatus?.status) }}>
-                        {verificationStatus?.status === 'Verified' ? <CheckCircle size={18} /> : verificationStatus?.status === 'Partially Verified' ? <AlertTriangle size={18} /> : <XCircle size={18} />}
-                        <span>{verificationStatus?.status ? t(verificationStatus.status.replace(/\s/g, ''), verificationStatus.status) : t('Unknown')} ({verificationStatus?.score || 0}/100)</span>
+                        {verificationStatus?.status === 'EXTRACTED' ? <CheckCircle size={18} /> : verificationStatus?.status === 'Verified' ? <CheckCircle size={18} /> : verificationStatus?.status === 'Partially Verified' ? <AlertTriangle size={18} /> : <XCircle size={18} />}
+                        <span>{verificationStatus?.status ? t(verificationStatus.status.replace(/\s/g, ''), verificationStatus.status) : t('Unknown')} ({verificationStatus?.confidence || 0})</span>
                     </div>
 
                     <div style={styles.summaryCard}>
@@ -270,30 +246,26 @@ const DocumentVerification = ({ userId, profileData, onVerificationComplete }) =
                             <div style={styles.summaryItem}>
                                 <div style={{display: 'flex', alignItems: 'center', gap: '5px'}}>
                                     <span style={styles.sumLabel}>{t('Name')}</span>
-                                    {verificationStatus?.results?.name === 'Verified' ? <CheckCircle size={12} color="#10b981" /> : <XCircle size={12} color="#ef4444" />}
                                 </div>
-                                <span style={{...styles.sumValue, color: getStatusColor(verificationStatus?.results?.name)}}>{verificationStatus?.extracted_summary?.name || t('NotScanned')}</span>
+                                <span style={{...styles.sumValue}}>{verificationStatus?.fields?.name?.value || verificationStatus?.fields?.full_name?.value || t('NotScanned')}</span>
                             </div>
                             <div style={styles.summaryItem}>
                                 <div style={{display: 'flex', alignItems: 'center', gap: '5px'}}>
                                     <span style={styles.sumLabel}>{t('DateOfBirth')}</span>
-                                    {verificationStatus?.results?.dob === 'Verified' ? <CheckCircle size={12} color="#10b981" /> : <XCircle size={12} color="#ef4444" />}
                                 </div>
-                                <span style={{...styles.sumValue, color: getStatusColor(verificationStatus?.results?.dob)}}>{verificationStatus?.extracted_summary?.dob || t('NotScanned')}</span>
+                                <span style={{...styles.sumValue}}>{verificationStatus?.fields?.dob?.value || t('NotScanned')}</span>
                             </div>
                             <div style={styles.summaryItem}>
                                 <div style={{display: 'flex', alignItems: 'center', gap: '5px'}}>
                                     <span style={styles.sumLabel}>{t('Income')}</span>
-                                    {verificationStatus?.results?.income === 'Verified' ? <CheckCircle size={12} color="#10b981" /> : <XCircle size={12} color="#ef4444" />}
                                 </div>
-                                <span style={{...styles.sumValue, color: getStatusColor(verificationStatus?.results?.income)}}>₹{verificationStatus?.extracted_summary?.income || '0'}</span>
+                                <span style={{...styles.sumValue}}>₹{verificationStatus?.fields?.income?.value || '0'}</span>
                             </div>
                             <div style={styles.summaryItem}>
                                 <div style={{display: 'flex', alignItems: 'center', gap: '5px'}}>
                                     <span style={styles.sumLabel}>{t('Category')}</span>
-                                    {verificationStatus?.results?.category === 'Verified' ? <CheckCircle size={12} color="#10b981" /> : <XCircle size={12} color="#ef4444" />}
                                 </div>
-                                <span style={{...styles.sumValue, color: getStatusColor(verificationStatus?.results?.category)}}>{verificationStatus?.extracted_summary?.category || 'Not Scanned'}</span>
+                                <span style={{...styles.sumValue}}>{verificationStatus?.fields?.category?.value || t('Not Scanned')}</span>
                             </div>
                         </div>
                     </div>

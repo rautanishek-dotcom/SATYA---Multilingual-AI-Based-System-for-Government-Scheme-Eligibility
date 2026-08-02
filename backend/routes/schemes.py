@@ -171,10 +171,7 @@ def get_scheme(scheme_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
-@schemes_bp.route('/eligible', methods=['POST'])
-def get_eligible_schemes():
-    data = request.json
-    db = get_db()
+def calculate_eligible_schemes_internal(data, db):
     lang = data.get("lang", "en")
     
     # --- 1. Utility: Normalize Data ---
@@ -370,10 +367,17 @@ def get_eligible_schemes():
         translate_schemes_in_batch(eligible_schemes, lang)
         translate_schemes_in_batch(ineligible_schemes, lang)
 
-    return jsonify({
+    return {
         "eligible": eligible_schemes,
         "ineligible": ineligible_schemes
-    }), 200
+    }
+
+@schemes_bp.route('/eligible', methods=['POST'])
+def get_eligible_schemes():
+    data = request.json
+    db = get_db()
+    result = calculate_eligible_schemes_internal(data, db)
+    return jsonify(result), 200
 
 # Admin route to add a scheme
 @schemes_bp.route('/add', methods=['POST'])

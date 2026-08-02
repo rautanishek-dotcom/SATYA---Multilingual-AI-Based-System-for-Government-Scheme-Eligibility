@@ -1,0 +1,4 @@
+Confidence: 54.9%
+Engines used: ['tesseract', 'tesseract', 'tesseract', 'tesseract']
+Text:
+Pea eee Pee eRe ES

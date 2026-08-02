@@ -1,0 +1,4 @@
+Confidence: 54.1%
+Engines used: ['tesseract', 'tesseract', 'tesseract', 'tesseract']
+Text:
+en

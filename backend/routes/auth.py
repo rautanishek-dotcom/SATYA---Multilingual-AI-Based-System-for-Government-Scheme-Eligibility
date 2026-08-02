@@ -98,6 +98,8 @@ def login():
                 "email": user["email"],
                 "role": user.get("role"),
                 "aadhaar_verified": user.get("aadhaar_verified", False),
+                "identity_locked": user.get("identity_locked", False),
+                "identity_profile": user.get("identity_profile", {}),
                 "profile": user.get("profile", {})
             }
         }), 200

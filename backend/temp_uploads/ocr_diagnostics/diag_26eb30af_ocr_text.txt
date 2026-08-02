@@ -1,0 +1,4 @@
+Confidence: 59.2%
+Engines used: ['tesseract', 'tesseract', 'tesseract', 'tesseract']
+Text:
+Incom> Tax Dopartm<nt Pcrmancnt Account Numbcr Namco: ABHISHEK KUMAR RAUT Doe: 15/08/2002 PAN: ABCDE1234F

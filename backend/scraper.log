@@ -1,0 +1,193 @@
+2026-04-28 17:53:43,469  [INFO]  ============================================================
+2026-04-28 17:53:43,470  [INFO]  SATYA Scheme Scraper started at 2026-04-28 17:53:43
+2026-04-28 17:53:43,470  [INFO]  ============================================================
+2026-04-28 17:53:43,497  [INFO]  ✅ Connected to MongoDB  →  Satya.schemes
+2026-04-28 17:54:53,447  [INFO]  ============================================================
+2026-04-28 17:54:53,447  [INFO]  SATYA Scheme Scraper started at 2026-04-28 17:54:53
+2026-04-28 17:54:53,448  [INFO]  ============================================================
+2026-04-28 17:54:53,470  [INFO]  ✅ Connected to MongoDB  →  Satya.schemes
+2026-04-28 17:55:29,696  [INFO]  ============================================================
+2026-04-28 17:55:29,697  [INFO]  SATYA Scheme Scraper started at 2026-04-28 17:55:29
+2026-04-28 17:55:29,697  [INFO]  ============================================================
+2026-04-28 17:55:29,721  [INFO]  ✅ Connected to MongoDB  →  Satya.schemes
+2026-04-28 17:55:29,819  [INFO]  ✅ Sparse unique index created on 'scheme_slug'.
+2026-04-28 17:55:29,820  [INFO]  ── Source: myscheme.gov.in API ──
+2026-04-28 17:55:30,630  [WARNING]    Attempt 1/3 failed for https://www.myscheme.gov.in/api/v1/search?keyword=&page=1&limit=20 → 404 Client Error: Not Found for url: https://www.myscheme.gov.in/api/v1/search?keyword=&page=1&limit=20
+2026-04-28 17:55:34,278  [WARNING]    Attempt 2/3 failed for https://www.myscheme.gov.in/api/v1/search?keyword=&page=1&limit=20 → 404 Client Error: Not Found for url: https://www.myscheme.gov.in/api/v1/search?keyword=&page=1&limit=20
+2026-04-28 17:55:40,925  [WARNING]    Attempt 3/3 failed for https://www.myscheme.gov.in/api/v1/search?keyword=&page=1&limit=20 → 404 Client Error: Not Found for url: https://www.myscheme.gov.in/api/v1/search?keyword=&page=1&limit=20
+2026-04-28 17:55:49,927  [ERROR]    Giving up on https://www.myscheme.gov.in/api/v1/search?keyword=&page=1&limit=20 after 3 attempts.
+2026-04-28 17:55:49,930  [INFO]  myscheme API total: 0 schemes scraped.
+2026-04-28 17:55:49,930  [INFO]  ── Source: india.gov.in HTML Scraper ──
+2026-04-28 17:55:50,865  [WARNING]    Attempt 1/3 failed for https://www.india.gov.in/spotlight/schemes-government-india → 404 Client Error: Not Found for url: https://www.india.gov.in/spotlight/schemes-government-india
+2026-04-28 17:55:54,453  [WARNING]    Attempt 2/3 failed for https://www.india.gov.in/spotlight/schemes-government-india → 404 Client Error: Not Found for url: https://www.india.gov.in/spotlight/schemes-government-india
+2026-04-28 17:57:42,291  [INFO]  ============================================================
+2026-04-28 17:57:42,292  [INFO]  SATYA Scheme Scraper started at 2026-04-28 17:57:42
+2026-04-28 17:57:42,292  [INFO]  ============================================================
+2026-04-28 17:57:42,339  [INFO]  [OK] Connected to MongoDB -> Satya.schemes
+2026-04-28 17:57:42,341  [INFO]  [OK] Unique index on 'scheme_slug' already exists.
+2026-04-28 17:57:42,341  [INFO]  --- Source A: myscheme.gov.in API ---
+2026-04-28 17:57:42,889  [WARNING]    Attempt 1/2 failed for https://www.myscheme.gov.in/_next/data/schemes/en/find-scheme.json -> 404 Client Error: Not Found for url: https://www.myscheme.gov.in/_next/data/schemes/en/find-scheme.json
+2026-04-28 17:57:46,476  [WARNING]    Attempt 2/2 failed for https://www.myscheme.gov.in/_next/data/schemes/en/find-scheme.json -> 404 Client Error: Not Found for url: https://www.myscheme.gov.in/_next/data/schemes/en/find-scheme.json
+2026-04-28 17:57:52,477  [ERROR]    Giving up on https://www.myscheme.gov.in/_next/data/schemes/en/find-scheme.json after 2 attempts.
+2026-04-28 17:57:53,138  [WARNING]    Attempt 1/2 failed for https://api.myscheme.gov.in/search/v3/schemes?lang=en&q=&from=0&size=20 -> 403 Client Error: Forbidden for url: https://api.myscheme.gov.in/search/v3/schemes?lang=en&q=&from=0&size=20
+2026-04-28 17:57:56,714  [WARNING]    Attempt 2/2 failed for https://api.myscheme.gov.in/search/v3/schemes?lang=en&q=&from=0&size=20 -> 403 Client Error: Forbidden for url: https://api.myscheme.gov.in/search/v3/schemes?lang=en&q=&from=0&size=20
+2026-04-28 17:58:02,715  [ERROR]    Giving up on https://api.myscheme.gov.in/search/v3/schemes?lang=en&q=&from=0&size=20 after 2 attempts.
+2026-04-28 17:58:03,275  [WARNING]    Non-JSON response from https://nha.gov.in/api/schemes, skipping.
+2026-04-28 17:58:03,275  [INFO]  Source A total: 0 schemes.
+2026-04-28 17:58:03,277  [INFO]  --- Source B: pmindia.gov.in HTML Scraper ---
+2026-04-28 17:58:05,111  [WARNING]    Attempt 1/2 failed for https://www.pmindia.gov.in/en/government_tr_rec/schemes-and-programmes/ -> 404 Client Error: Not Found for url: https://www.pmindia.gov.in/en/government_tr_rec/schemes-and-programmes/
+2026-04-28 17:58:09,827  [WARNING]    Attempt 2/2 failed for https://www.pmindia.gov.in/en/government_tr_rec/schemes-and-programmes/ -> 404 Client Error: Not Found for url: https://www.pmindia.gov.in/en/government_tr_rec/schemes-and-programmes/
+2026-04-28 17:58:15,829  [ERROR]    Giving up on https://www.pmindia.gov.in/en/government_tr_rec/schemes-and-programmes/ after 2 attempts.
+2026-04-28 17:58:18,011  [WARNING]    Attempt 1/2 failed for https://www.pmindia.gov.in/en/news_updates/schemes-launched/ -> 404 Client Error: Not Found for url: https://www.pmindia.gov.in/en/news_updates/schemes-launched/
+2026-04-28 17:58:22,637  [WARNING]    Attempt 2/2 failed for https://www.pmindia.gov.in/en/news_updates/schemes-launched/ -> 404 Client Error: Not Found for url: https://www.pmindia.gov.in/en/news_updates/schemes-launched/
+2026-04-28 17:58:28,638  [ERROR]    Giving up on https://www.pmindia.gov.in/en/news_updates/schemes-launched/ after 2 attempts.
+2026-04-28 17:58:28,639  [INFO]  Source B total: 0 unique schemes.
+2026-04-28 17:58:28,639  [INFO]  Fewer than 5 schemes from primary sources — trying HTML fallback.
+2026-04-28 17:58:28,639  [INFO]  --- Source C: HTML Fallback Scraper ---
+2026-04-28 17:58:29,296  [INFO]    https://www.india.gov.in/my-government/schemes -> 0 items.
+2026-04-28 17:58:31,850  [INFO]    https://www.myscheme.gov.in/find-scheme -> 0 items.
+2026-04-28 17:58:33,851  [INFO]  Source C total: 0 unique schemes.
+2026-04-28 17:58:33,853  [INFO]  Total unique schemes collected across all sources: 0
+2026-04-28 17:58:33,853  [WARNING]  No schemes to upsert.
+2026-04-28 17:58:33,951  [INFO]  ============================================================
+2026-04-28 17:58:33,951  [INFO]  Scraper finished. Check scraper.log for full details.
+2026-04-28 17:58:33,951  [INFO]  ============================================================
+2026-04-28 18:03:03,658 [INFO] ==========================================================
+2026-04-28 18:03:03,658 [INFO] SATYA Scheme Scraper started at 2026-04-28 18:03:03
+2026-04-28 18:03:03,658 [INFO] ==========================================================
+2026-04-28 18:03:03,709 [INFO] [OK] MongoDB connected -> Satya.schemes
+2026-04-28 18:03:03,710 [INFO] [OK] Unique index already exists.
+2026-04-28 18:03:03,710 [INFO] --- Source A: Built-in curated dataset ---
+2026-04-28 18:03:03,711 [INFO] Source A: 25 built-in schemes loaded.
+2026-04-28 18:03:03,711 [INFO] --- Source B: Wikipedia scheme lists ---
+2026-04-28 18:05:08,231 [INFO]   https://en.wikipedia.org/wiki/List_of_government_schemes_in_India -> 84 schemes so far.
+2026-04-28 18:05:11,504 [WARNING]   Attempt 1/2 failed: https://en.wikipedia.org/wiki/Schemes_of_the_Government_of_India -> 404 Client Error: Not Found for url: https://en.wikipedia.org/wiki/Schemes_of_the_Government_of_India
+2026-04-28 18:05:15,088 [WARNING]   Attempt 2/2 failed: https://en.wikipedia.org/wiki/Schemes_of_the_Government_of_India -> 404 Client Error: Not Found for url: https://en.wikipedia.org/wiki/Schemes_of_the_Government_of_India
+2026-04-28 18:05:21,089 [ERROR]   Giving up on: https://en.wikipedia.org/wiki/Schemes_of_the_Government_of_India
+2026-04-28 18:05:21,094 [INFO] Source B total: 84 unique schemes from Wikipedia.
+2026-04-28 18:05:21,094 [INFO] --- Source C: scholarships.gov.in ---
+2026-04-28 18:05:23,074 [WARNING]   Attempt 1/2 failed: https://scholarships.gov.in/public/schemeNew/benficiary_schemes.jsp -> 404 Client Error: Not Found for url: https://scholarships.gov.in/public/schemeNew/benficiary_schemes.jsp
+2026-04-28 18:05:27,174 [WARNING]   Attempt 2/2 failed: https://scholarships.gov.in/public/schemeNew/benficiary_schemes.jsp -> 404 Client Error: Not Found for url: https://scholarships.gov.in/public/schemeNew/benficiary_schemes.jsp
+2026-04-28 18:05:33,176 [ERROR]   Giving up on: https://scholarships.gov.in/public/schemeNew/benficiary_schemes.jsp
+2026-04-28 18:05:33,180 [WARNING]   scholarships.gov.in not reachable, skipping.
+2026-04-28 18:05:33,181 [INFO] Total unique schemes across all sources: 109
+2026-04-28 18:05:33,281 [INFO] [OK] Upsert done -> New: 109 | Updated: 0 | Unchanged: 0
+2026-04-28 18:05:33,283 [INFO] ==========================================================
+2026-04-28 18:05:33,283 [INFO] Scraper finished. See scraper.log for full details.
+2026-04-28 18:05:33,283 [INFO] ==========================================================
+2026-04-28 18:14:43,250 [INFO] ==========================================================
+2026-04-28 18:14:43,250 [INFO] SATYA Scheme Updater started: 2026-04-28 18:14:43
+2026-04-28 18:14:43,251 [INFO] ==========================================================
+2026-04-28 18:14:43,264 [INFO] [OK] MongoDB connected -> Satya.schemes
+2026-04-28 18:14:43,266 [INFO] [OK] Unique index already exists.
+2026-04-28 18:14:43,266 [INFO] --- Source A: Built-in curated dataset ---
+2026-04-28 18:14:43,266 [INFO]   25 schemes loaded.
+2026-04-28 18:14:43,281 [INFO] [OK] builtin -> New: 11 | Updated: 14 | Unchanged: 0
+2026-04-28 18:14:43,281 [INFO] --- Source B: Wikipedia ---
+2026-04-28 18:15:44,186 [INFO] Wikipedia: 43 unique schemes collected.
+2026-04-28 18:15:44,200 [INFO] [OK] wikipedia -> New: 2 | Updated: 41 | Unchanged: 0
+2026-04-28 18:15:44,202 [INFO] ----------------------------------------------------------
+2026-04-28 18:15:44,202 [INFO] TOTAL  ->  New: 13 | Updated: 55 | Unchanged: 0
+2026-04-28 18:15:44,202 [INFO] Scraper finished. Full log: scraper.log
+2026-04-28 18:15:44,202 [INFO] ==========================================================
+2026-04-28 18:16:34,446 [INFO] ==========================================================
+2026-04-28 18:16:34,446 [INFO] SATYA Scheme Updater started: 2026-04-28 18:16:34
+2026-04-28 18:16:34,446 [INFO] ==========================================================
+2026-04-28 18:16:34,481 [INFO] [OK] MongoDB connected -> Satya.schemes
+2026-04-28 18:16:34,483 [INFO] [OK] Unique index already exists.
+2026-04-28 18:16:34,483 [INFO] --- Source A: Built-in curated dataset ---
+2026-04-28 18:16:34,483 [INFO]   25 schemes loaded.
+2026-04-28 18:16:34,486 [INFO] [OK] builtin -> New: 0 | Updated: 25 | Unchanged: 0
+2026-04-28 18:16:34,486 [INFO] --- Source B: Wikipedia ---
+2026-04-28 18:16:35,130 [ERROR] Source B (Wikipedia) failed: Couldn't find a tree builder with the features you requested: lxml. Do you need to install a parser library?
+2026-04-28 18:16:35,134 [INFO] ----------------------------------------------------------
+2026-04-28 18:16:35,135 [INFO] TOTAL  ->  New: 0 | Updated: 25 | Unchanged: 0
+2026-04-28 18:16:35,137 [INFO] Scraper finished. Full log: scraper.log
+2026-04-28 18:16:35,137 [INFO] ==========================================================
+2026-04-28 18:30:56,170 [INFO] ==========================================================
+2026-04-28 18:30:56,171 [INFO] SATYA Scheme Updater started: 2026-04-28 18:30:56
+2026-04-28 18:30:56,171 [INFO] ==========================================================
+2026-04-28 18:30:56,223 [INFO] [OK] MongoDB connected -> Satya.schemes
+2026-04-28 18:30:56,225 [INFO] [OK] Unique index already exists.
+2026-04-28 18:30:56,225 [INFO] --- Source A: Built-in curated dataset ---
+2026-04-28 18:30:56,225 [INFO]   25 schemes loaded.
+2026-04-28 18:30:56,234 [INFO] [OK] builtin -> New: 0 | Updated: 25 | Unchanged: 0
+2026-04-28 18:30:56,235 [INFO] --- Source B: Wikipedia ---
+2026-04-28 18:32:00,769 [INFO] ==========================================================
+2026-04-28 18:32:00,770 [INFO] SATYA Scheme Updater started: 2026-04-28 18:32:00
+2026-04-28 18:32:00,770 [INFO] ==========================================================
+2026-04-28 18:32:00,810 [INFO] [OK] MongoDB connected -> Satya.schemes
+2026-04-28 18:32:00,811 [INFO] [OK] Unique index already exists.
+2026-04-28 18:32:00,813 [INFO] --- Source A: Built-in curated dataset ---
+2026-04-28 18:32:00,813 [INFO]   25 schemes loaded.
+2026-04-28 18:32:00,820 [INFO] [OK] builtin -> New: 0 | Updated: 25 | Unchanged: 0
+2026-04-28 18:32:00,820 [INFO] --- Source B: Wikipedia ---
+2026-04-28 18:33:43,638 [INFO] ==========================================================
+2026-04-28 18:33:43,639 [INFO] SATYA Scheme Updater started: 2026-04-28 18:33:43
+2026-04-28 18:33:43,639 [INFO] ==========================================================
+2026-04-28 18:33:43,678 [INFO] [OK] MongoDB connected -> Satya.schemes
+2026-04-28 18:33:43,680 [INFO] [OK] Unique index already exists.
+2026-04-28 18:33:43,681 [INFO] --- Source A: Built-in curated dataset ---
+2026-04-28 18:33:43,681 [INFO]   25 schemes loaded.
+2026-04-28 18:33:43,693 [INFO] [OK] builtin -> New: 0 | Updated: 25 | Unchanged: 0
+2026-04-28 18:33:43,693 [INFO] --- Source B: Wikipedia ---
+2026-04-28 18:34:45,447 [INFO] Wikipedia: 43 unique schemes collected.
+2026-04-28 18:34:45,463 [INFO] [OK] wikipedia -> New: 0 | Updated: 43 | Unchanged: 0
+2026-04-28 18:34:45,466 [INFO] ----------------------------------------------------------
+2026-04-28 18:34:45,466 [INFO] TOTAL  ->  New: 0 | Updated: 68 | Unchanged: 0
+2026-04-28 18:34:45,467 [INFO] Scraper finished. Full log: scraper.log
+2026-04-28 18:34:45,467 [INFO] ==========================================================
+2026-04-28 20:06:36,634 [INFO] ==========================================================
+2026-04-28 20:06:36,634 [INFO] SATYA Scheme Updater started: 2026-04-28 20:06:36
+2026-04-28 20:06:36,635 [INFO] ==========================================================
+2026-04-28 20:06:36,682 [INFO] [OK] MongoDB connected -> Satya.schemes
+2026-04-28 20:06:36,682 [INFO] [OK] Unique index already exists.
+2026-04-28 20:06:36,682 [INFO] --- Source A: Built-in curated dataset ---
+2026-04-28 20:06:36,682 [INFO]   25 schemes loaded.
+2026-04-28 20:06:36,691 [INFO] [OK] builtin -> New: 0 | Updated: 25 | Unchanged: 0
+2026-04-28 20:06:36,691 [INFO] --- Source B: Wikipedia ---
+2026-04-28 20:07:31,321 [INFO] Wikipedia: 43 unique schemes collected.
+2026-04-28 20:07:31,333 [INFO] [OK] wikipedia -> New: 0 | Updated: 43 | Unchanged: 0
+2026-04-28 20:07:31,335 [INFO] ----------------------------------------------------------
+2026-04-28 20:07:31,335 [INFO] TOTAL  ->  New: 0 | Updated: 68 | Unchanged: 0
+2026-04-28 20:07:31,336 [INFO] Scraper finished. Full log: scraper.log
+2026-04-28 20:07:31,336 [INFO] ==========================================================
+2026-04-28 23:47:33,596 [INFO] ==========================================================
+2026-04-28 23:47:33,596 [INFO] SATYA Scheme Updater started: 2026-04-28 23:47:33
+2026-04-28 23:47:33,596 [INFO] ==========================================================
+2026-04-28 23:47:33,683 [INFO] [OK] MongoDB connected -> Satya.schemes
+2026-04-28 23:47:33,684 [INFO] [OK] Unique index already exists.
+2026-04-28 23:47:33,684 [INFO] --- Source A: Built-in curated dataset ---
+2026-04-28 23:47:33,684 [INFO]   25 schemes loaded.
+2026-04-28 23:47:33,692 [INFO] [OK] builtin -> New: 0 | Updated: 25 | Unchanged: 0
+2026-04-28 23:47:33,692 [INFO] --- Source B: Wikipedia ---
+2026-04-28 23:48:29,967 [INFO] ==========================================================
+2026-04-28 23:48:29,967 [INFO] SATYA Scheme Updater started: 2026-04-28 23:48:29
+2026-04-28 23:48:29,968 [INFO] ==========================================================
+2026-04-28 23:48:29,983 [INFO] [OK] MongoDB connected -> Satya.schemes
+2026-04-28 23:48:29,984 [INFO] [OK] Unique index already exists.
+2026-04-28 23:48:29,984 [INFO] --- Source A: Built-in curated dataset ---
+2026-04-28 23:48:29,984 [INFO]   25 schemes loaded.
+2026-04-28 23:48:29,988 [INFO] [OK] builtin -> New: 0 | Updated: 25 | Unchanged: 0
+2026-04-28 23:48:29,989 [INFO] --- Source B: Wikipedia ---
+2026-04-28 23:49:17,919 [INFO] Wikipedia: 43 unique schemes collected.
+2026-04-28 23:49:17,928 [INFO] [OK] wikipedia -> New: 0 | Updated: 43 | Unchanged: 0
+2026-04-28 23:49:17,929 [INFO] ----------------------------------------------------------
+2026-04-28 23:49:17,929 [INFO] TOTAL  ->  New: 0 | Updated: 68 | Unchanged: 0
+2026-04-28 23:49:17,929 [INFO] Scraper finished. Full log: scraper.log
+2026-04-28 23:49:17,929 [INFO] ==========================================================
+2026-04-30 09:42:55,783 [INFO] ==========================================================
+2026-04-30 09:42:55,787 [INFO] SATYA Scheme Updater started: 2026-04-30 09:42:55
+2026-04-30 09:42:55,788 [INFO] ==========================================================
+2026-04-30 09:42:55,807 [INFO] [OK] MongoDB connected -> Satya.schemes
+2026-04-30 09:42:55,808 [INFO] [OK] Unique index already exists.
+2026-04-30 09:42:55,809 [INFO] --- Source A: Built-in curated dataset ---
+2026-04-30 09:42:55,809 [INFO]   25 schemes loaded.
+2026-04-30 09:42:55,821 [INFO] [OK] builtin -> New: 0 | Updated: 25 | Unchanged: 0
+2026-04-30 09:42:55,821 [INFO] --- Source B: Wikipedia ---
+2026-04-30 09:44:01,270 [INFO] Wikipedia: 43 unique schemes collected.
+2026-04-30 09:44:01,280 [INFO] [OK] wikipedia -> New: 0 | Updated: 43 | Unchanged: 0
+2026-04-30 09:44:01,283 [INFO] ----------------------------------------------------------
+2026-04-30 09:44:01,284 [INFO] TOTAL  ->  New: 0 | Updated: 68 | Unchanged: 0
+2026-04-30 09:44:01,284 [INFO] Scraper finished. Full log: scraper.log
+2026-04-30 09:44:01,284 [INFO] ==========================================================

@@ -1,0 +1,4 @@
+Confidence: 60.5%
+Engines used: ['tesseract']
+Text:
+Income Tax Department Permanent Account Number Name: ABHISHEK KUMAR RAUT Father: SATISH KUMAR RAUT DOB: 15/08/2002 PAN: ABCDE1234F

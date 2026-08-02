@@ -8,7 +8,6 @@ import {
   Building, Landmark, Milestone, FileText as ScrollText, List as ListIcon,
   Home, XCircle, Activity
 } from 'lucide-react';
-import DocumentVerification from '../components/DocumentVerification';
 
 const EligibilityForm = () => {
   const { t, i18n } = useTranslation();
@@ -65,6 +64,7 @@ const EligibilityForm = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [results, setResults] = useState(null);
+  const [matchBreakdown, setMatchBreakdown] = useState(null);
   const [selectedScheme, setSelectedScheme] = useState(null);
   const [isVerified, setIsVerified] = useState(false);
   const [showVerification, setShowVerification] = useState(false);
@@ -230,9 +230,9 @@ const EligibilityForm = () => {
         ...formData, 
         user_id: userId, 
         lang: i18n.language,
-        certificate_uploaded: certVerified 
+        certificate_uploaded: true // Mark as uploaded because they have verified documents in vault
       };
-      const response = await fetch('http://localhost:5000/api/schemes/eligible', {
+      const response = await fetch('http://localhost:5000/api/eligibility/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -244,8 +244,24 @@ const EligibilityForm = () => {
       }
 
       const data = await response.json();
-      setResults(data);
-      if (!isAutoRefresh) setShowVerification(true);
+      
+      if (!data.identity_verified) {
+        setIsVerified(false);
+        setResults(null);
+        setMatchBreakdown(data.match_breakdown || null);
+        setError(data.reason || "Identity verification failed.");
+        if (!isAutoRefresh) {
+          setShowVerification(true);
+          setCurrentStep(11);
+        }
+        setLoading(false);
+        return;
+      }
+      
+      setIsVerified(true);
+      setResults(data.eligible_schemes);
+      setMatchBreakdown(data.match_breakdown || null);
+      if (!isAutoRefresh) setShowVerification(false); // don't show vault notice
       if (!isAutoRefresh) setCurrentStep(11);
     } catch (err) {
       console.error("Error fetching eligible schemes:", err);
@@ -261,13 +277,42 @@ const EligibilityForm = () => {
         return (
             <div className="glass-card" style={styles.placeholderCard}>
                <XCircle size={60} color="#ef4444" style={{ marginBottom: '20px' }} />
-               <h3>{t('ErrorOccurred', 'Error Occurred')}</h3>
+               <h3>{t('ErrorOccurred', 'Verification Failed')}</h3>
                <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '12px', maxWidth: '400px' }}>
                  {error}
                </p>
+               
+               {matchBreakdown && (
+                 <div style={{ marginTop: '20px', padding: '16px', background: 'rgba(239, 68, 68, 0.05)', borderRadius: '12px', width: '100%', maxWidth: '400px', border: '1px solid rgba(239, 68, 68, 0.1)' }}>
+                   <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#7f1d1d' }}>Identity Match Details</h4>
+                   <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
+                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                       <span style={{ color: '#475569' }}>Name Match:</span>
+                       <span style={{ fontWeight: 600 }}>{matchBreakdown.name?.similarity}%</span>
+                     </div>
+                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                       <span style={{ color: '#475569' }}>DOB Match:</span>
+                       <span style={{ fontWeight: 600, color: matchBreakdown.dob?.match ? '#16a34a' : '#dc2626' }}>
+                         {matchBreakdown.dob?.match ? 'Yes' : 'No'}
+                       </span>
+                     </div>
+                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                       <span style={{ color: '#475569' }}>Gender Match:</span>
+                       <span style={{ fontWeight: 600, color: matchBreakdown.gender?.match ? '#16a34a' : '#dc2626' }}>
+                         {matchBreakdown.gender?.match ? 'Yes' : 'No'}
+                       </span>
+                     </div>
+                     <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: '8px', marginTop: '4px' }}>
+                       <span style={{ fontWeight: 600 }}>Total Score:</span>
+                       <span style={{ fontWeight: 700, color: matchBreakdown.total >= 90 ? '#16a34a' : '#dc2626' }}>{matchBreakdown.total}%</span>
+                     </div>
+                   </div>
+                 </div>
+               )}
+
                <button 
                  onClick={() => handleSubmit()} 
-                 style={{...styles.submitBtn, marginTop: '20px', width: 'auto', padding: '10px 30px'}}
+                 style={{...styles.submitBtn, marginTop: '24px', width: 'auto', padding: '10px 30px'}}
                >
                  {t('Retry', 'Retry')}
                </button>
@@ -289,11 +334,29 @@ const EligibilityForm = () => {
 
     if (showVerification && !isVerified) {
         return (
-            <DocumentVerification 
-                userId={userId} 
-                profileData={formData} 
-                onVerificationComplete={(status) => setIsVerified(status)} 
-            />
+            <div className="glass-card animate-fade-in" style={styles.placeholderCard}>
+                <ShieldCheck size={64} color="#ef4444" style={{ marginBottom: '20px' }} />
+                <h3 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-color)' }}>
+                   Document Vault Verification Required
+                </h3>
+                <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '12px', maxWidth: '450px', lineHeight: 1.6 }}>
+                   {error || "To view eligible schemes, SATYA requires at least one verified document in your personal SATYA AI Document Vault that matches your identity."}
+                </p>
+                <div style={{ display: 'flex', gap: '16px', marginTop: '24px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                    <button 
+                      onClick={() => window.location.href = '/vault'} 
+                      style={{...styles.submitBtn, width: 'auto', padding: '12px 30px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 600}}
+                    >
+                      Go to Document Vault
+                    </button>
+                    <button 
+                      onClick={() => handleSubmit()} 
+                      style={{...styles.submitBtn, width: 'auto', padding: '12px 30px', background: 'transparent', border: '1px solid #e2e8f0', color: 'var(--text-color)', borderRadius: '12px', cursor: 'pointer', fontWeight: 600}}
+                    >
+                      Check Status Again
+                    </button>
+                </div>
+            </div>
         );
     }
 
@@ -302,9 +365,9 @@ const EligibilityForm = () => {
             <div className="glass-card" style={styles.placeholderCard}>
                <ShieldCheck size={60} color="var(--primary-color)" style={{ marginBottom: '20px' }} />
                <h3>{t('VerificationRequired')}</h3>
-               <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '12px', maxWidth: '300px' }}>
-                 {t('VerificationDesc')}
-               </p>
+                <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '12px', maxWidth: '300px' }}>
+                  {error || "Please verify documents in your Document Vault first."}
+                </p>
             </div>
         );
     }
