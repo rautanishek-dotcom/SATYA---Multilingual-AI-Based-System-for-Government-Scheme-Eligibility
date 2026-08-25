@@ -7,8 +7,6 @@ const DocumentVerification = ({ userId, profileData, onVerificationComplete }) =
     const storedUser = JSON.parse(localStorage.getItem('satya_user') || '{}');
     const [loading, setLoading] = useState(false);
     const [verificationStatus, setVerificationStatus] = useState(null);
-    const [score, setScore] = useState(0);
-    const [mismatches, setMismatches] = useState([]);
     const [files, setFiles] = useState({
         aadhaar: null,
         income: null,
@@ -22,8 +20,6 @@ const DocumentVerification = ({ userId, profileData, onVerificationComplete }) =
         income: '',
         category: 'General'
     });
-
-    const activeData = profileData || internalFormData;
 
     const handleFileChange = (e, type) => {
         setFiles({ ...files, [type]: e.target.files[0] });
@@ -97,8 +93,8 @@ const DocumentVerification = ({ userId, profileData, onVerificationComplete }) =
                 }
 
                 if (uploadResult.status) {
-                    setScore(uploadResult.confidence || 0);
-                    setMismatches(uploadResult.missing_fields || []);
+                    // The backend response already carries the extracted confidence
+                    // and missing fields in the returned payload.
                 }
             }
 

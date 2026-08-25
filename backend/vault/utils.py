@@ -98,6 +98,18 @@ class VaultUtils:
         return f"{'X' * max(0, len(raw) - visible)}{raw[-visible:]}"
 
     @staticmethod
+    def validate_file(file_storage):
+        """Validate an uploaded file using the same rules as the vault manager.
+
+        Returns the normalized tuple produced by ``DocumentManager._validate_upload``.
+        The method is intentionally lazy-imported to avoid a heavy import cycle at
+        module load time.
+        """
+        from vault.document_manager import DocumentManager
+
+        return DocumentManager()._validate_upload(file_storage)
+
+    @staticmethod
     def field(value, confidence=0.0):
         return {"value": value if value is not None else "", "confidence": round(float(confidence), 1)}
 

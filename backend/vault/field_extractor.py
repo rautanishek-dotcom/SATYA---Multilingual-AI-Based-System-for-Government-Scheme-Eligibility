@@ -86,16 +86,37 @@ class FieldExtractor:
             elif val == "F": val = "Female"
             fields["gender"] = {"value": val, "confidence": 99.0, "strategy": "regex_pattern"}
 
-        if doc_type == "aadhaar":
-            uid_match = re.search(r'\b([2-9]{1}[0-9]{3}\s?[0-9]{4}\s?[0-9]{4})\b', full_text)
+        if doc_type == "aadhaar_ocr":
+            uid_match = re.search(r'\b([2-9]{1}[0-9]{3}[\s]?[0-9]{4}[\s]?[0-9]{4})\b', full_text)
             if uid_match:
                 fields["document_number"] = {"value": uid_match.group(1).replace(" ", ""), "confidence": 99.0, "strategy": "regex_aadhaar"}
 
-            name_value = FieldExtractor._extract_label_value(full_text, ["name", "holder name", "applicant name"])
+            # Extended label search for name on Aadhaar cards
+            name_value = FieldExtractor._extract_label_value(full_text, [
+                "name", "holder name", "naam", "\u0928\u093e\u092e", "cardholder", "card holder", "applicant name"
+            ])
             if not name_value:
-                name_value = FieldExtractor._extract_label_value(full_text, ["name:"])
+                # Positional heuristic: name often appears as a proper-case line just before DOB / gender
+                name_before_dob = re.search(
+                    r'([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,4})\s*(?:\n|[\|/]|\s{3,})(?:(?:dob|date of birth|d\.o\.b|Year of Birth|\d{2}[/\-]\d{2}[/\-]\d{4}|male|female))',
+                    full_text, re.IGNORECASE
+                )
+                if name_before_dob:
+                    name_value = name_before_dob.group(1).strip()
+            if not name_value:
+                # Fallback: first Title Case 2+ word sequence in the text
+                name_cands = re.findall(r'\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,4})\b', full_text)
+                for cand in name_cands:
+                    tokens = cand.split()
+                    if len(tokens) >= 2 and not any(t.lower() in {
+                        "government", "india", "aadhaar", "uidai", "unique", "identification",
+                        "authority", "male", "female"
+                    } for t in tokens):
+                        name_value = cand
+                        break
             if name_value:
                 fields["name"] = {"value": name_value, "confidence": 88.0, "strategy": "label_value"}
+
 
         elif doc_type == "pan":
             pan_match = re.search(r'\b([A-Z]{5}[0-9]{4}[A-Z])\b', full_text)
@@ -121,6 +142,29 @@ class FieldExtractor:
             if surname or given:
                 full_name = " ".join([part for part in [given, surname] if part]).strip()
                 fields["name"] = {"value": full_name, "confidence": 90.0, "strategy": "label_value"}
+
+        elif doc_type in ["income_certificate", "caste_certificate", "domicile_certificate", "disability_certificate", "ration_card", "birth_certificate"]:
+            cert_no = re.search(r'(?:certificate no|no\.|udid|number)[:\-\s]*([A-Z0-9/.\-]+)', full_text, re.IGNORECASE)
+            if cert_no:
+                fields["document_number"] = {"value": cert_no.group(1), "confidence": 90.0, "strategy": "regex"}
+            name_val = FieldExtractor._extract_label_value(full_text, ["name", "certified that", "shri/smt/kum", "shri ", "smt "])
+            if name_val:
+                fields["name"] = {"value": name_val, "confidence": 80.0, "strategy": "label_value"}
+            
+            if doc_type == "income_certificate":
+                income = re.search(r'(?:income|rupees|rs\.?)\s*([\d,]+)', full_text, re.IGNORECASE)
+                if income: fields["income_amount"] = {"value": income.group(1), "confidence": 85.0, "strategy": "regex"}
+            elif doc_type == "caste_certificate":
+                caste = re.search(r'(?:caste|community|belongs to)\s+([\w\s]+?)\s+(?:categor|class|caste)', full_text, re.IGNORECASE)
+                if caste: fields["caste"] = {"value": caste.group(1).strip()[:30], "confidence": 85.0, "strategy": "regex"}
+                category_match = re.search(r'\b(obc|sc|st|ebc|open|general)\b', full_text, re.IGNORECASE)
+                if category_match: fields["category"] = {"value": category_match.group(1).upper(), "confidence": 95.0, "strategy": "regex"}
+            elif doc_type == "domicile_certificate":
+                state = re.search(r'(?:state of|government of)\s+([a-zA-Z\s]+)', full_text, re.IGNORECASE)
+                if state: fields["state"] = {"value": state.group(1).strip()[:30], "confidence": 85.0, "strategy": "regex"}
+            elif doc_type == "disability_certificate":
+                pct = re.search(r'(\d{1,3})\s*%', full_text)
+                if pct: fields["disability_percentage"] = {"value": pct.group(1), "confidence": 90.0, "strategy": "regex"}
 
         if "name" not in fields:
             name_candidates = FieldExtractor._extract_name_candidates(full_text)

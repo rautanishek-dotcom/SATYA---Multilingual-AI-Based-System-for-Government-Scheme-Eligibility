@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
   CheckCircle2, ChevronRight, Search, X, Target, ClipboardList, 
@@ -8,6 +8,7 @@ import {
   Building, Landmark, Milestone, FileText as ScrollText, List as ListIcon,
   Home, XCircle, Activity
 } from 'lucide-react';
+import OTPVerificationModal from '../components/OTPVerificationModal';
 
 const EligibilityForm = () => {
   const { t, i18n } = useTranslation();
@@ -79,9 +80,6 @@ const EligibilityForm = () => {
   
   // OTP State
   const [showOTPModal, setShowOTPModal] = useState(false);
-  const [otpValue, setOtpValue] = useState(['', '', '', '', '', '']);
-  const [otpTimer, setOtpTimer] = useState(0);
-  const [resendCount, setResendCount] = useState(0);
   const [isMobileVerified, setIsMobileVerified] = useState(false);
 
   useEffect(() => {
@@ -94,8 +92,8 @@ const EligibilityForm = () => {
           setFormData(prev => ({ ...prev, name: userObj.name || prev.name }));
         }
       }
-    } catch (err) {
-      console.error("Error parsing user data:", err);
+    } catch {
+      console.error("Error parsing user data");
     }
   }, []);
 
@@ -177,7 +175,7 @@ const EligibilityForm = () => {
       } else if (data.error) {
           setCertError(data.error);
       }
-    } catch (err) {
+    } catch {
       setCertError(t('UploadFailed', 'Certificate upload failed'));
     } finally {
       setCertLoading(false);
@@ -193,34 +191,48 @@ const EligibilityForm = () => {
   const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, totalSteps));
   const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
 
-  const handleVerifyOTP = () => {
+  const handleSendOTP = async () => {
+    try {
+      const token = localStorage.getItem('satya_token');
+      const res = await fetch('http://localhost:5000/api/otp/send', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ purpose: 'eligibility_check' })
+      });
+      
+      const data = await res.json();
+      if (res.ok) {
+        setShowOTPModal(true);
+      } else {
+        setError(data.error || 'Could not send OTP.');
+      }
+    } catch {
+      setError('Network Error: Could not reach server to send OTP.');
+    }
+  };
+
+  const handleOTPVerified = async (otpCode) => {
     setIsMobileVerified(true);
     setShowOTPModal(false);
+    
+    // Now trigger the actual eligibility verification with the OTP code
+    handleSubmit(null, false, otpCode);
   };
 
-  const startOTPTimer = () => {
-    setOtpTimer(30);
-    const interval = setInterval(() => {
-      setOtpTimer(prev => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  };
-
-  const handleSendOTP = () => {
-    if (resendCount >= 3) return;
-    setShowOTPModal(true);
-    setResendCount(prev => prev + 1);
-    startOTPTimer();
-  };
-
-  const handleSubmit = async (e, isAutoRefresh = false) => {
+  const handleSubmit = async (e, isAutoRefresh = false, otpCode = null) => {
     if (e) e.preventDefault();
     if (!formData.declaration_accepted) return;
+    
+    // If not auto-refreshing and OTP not yet verified/provided, we need to send OTP first.
+    // In our new flow, they click "Check Eligibility", we send OTP, show modal, 
+    // then on success, we call handleSubmit again with otpCode.
+    if (!isAutoRefresh && !otpCode) {
+        handleSendOTP();
+        return;
+    }
     
     if (!isAutoRefresh) setLoading(true);
     setError(null);
@@ -230,9 +242,12 @@ const EligibilityForm = () => {
         ...formData, 
         user_id: userId, 
         lang: i18n.language,
-        certificate_uploaded: true // Mark as uploaded because they have verified documents in vault
+        certificate_uploaded: true, // Mark as uploaded because they have verified documents in vault
+        otp_code: otpCode // Include the OTP code
       };
-      const response = await fetch('http://localhost:5000/api/eligibility/verify', {
+      
+      const endpoint = otpCode ? '/verify-with-otp' : '/verify';
+      const response = await fetch(`http://localhost:5000/api/eligibility${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -896,50 +911,13 @@ const EligibilityForm = () => {
       )}
 
       {/* OTP Modal */}
-      {showOTPModal && (
-          <div style={styles.modalOverlay}>
-              <div className="glass-card animate-scale-up" style={styles.otpModal}>
-                  <div style={styles.otpHeader}>
-                      <Phone size={24} color="var(--primary-color)" />
-                      <h3>{t('VerifyMobile')}</h3>
-                      <button onClick={() => setShowOTPModal(false)} style={styles.closeBtn}><X size={20}/></button>
-                  </div>
-                  <p style={styles.otpDesc}>{t('OTPSent')} to <b>+91 {formData.mobile}</b></p>
-                  <div style={styles.otpInputs}>
-                      {otpValue.map((digit, i) => (
-                          <input 
-                            key={i} 
-                            type="text" 
-                            maxLength="1" 
-                            style={styles.otpBox} 
-                            value={digit}
-                            onChange={(e) => {
-                                let newOtp = [...otpValue];
-                                newOtp[i] = e.target.value;
-                                setOtpValue(newOtp);
-                                // Auto-focus next
-                                if (e.target.value && i < 5) e.target.nextSibling?.focus();
-                            }}
-                          />
-                      ))}
-                  </div>
-                  <p style={{textAlign: 'center', fontSize: '0.8rem', color: '#10b981', marginTop: '10px'}}>{t('DemoOTPNote', '(Demo: Enter any 6 digits)')}</p>
-                  <div style={styles.otpFooter}>
-                      <button 
-                        onClick={handleSendOTP} 
-                        disabled={otpTimer > 0 || resendCount >= 3} 
-                        style={styles.resendBtn}
-                      >
-                          {otpTimer > 0 ? t('OTPTimer', { seconds: otpTimer }) : t('ResendOTP')}
-                      </button>
-                      <button onClick={handleVerifyOTP} className="btn-primary" style={styles.verifyConfirmBtn}>
-                          {t('Verify')}
-                      </button>
-                  </div>
-                  {resendCount >= 3 && <p style={styles.errorText}>{t('MaxRetriesError', 'Max retries reached. Try again later.')}</p>}
-              </div>
-          </div>
-      )}
+      <OTPVerificationModal
+        isOpen={showOTPModal}
+        onClose={() => setShowOTPModal(false)}
+        onVerified={handleOTPVerified}
+        purpose="eligibility_check"
+        userId={userId}
+      />
     </>
   );
 };
@@ -1025,9 +1003,6 @@ const styles = {
   applyBtn: { background: 'var(--primary-color)', color: 'white', padding: '18px', borderRadius: '12px', fontWeight: 700, width: '100%', display: 'flex', justifyContent: 'center', gap: '12px', border: 'none', cursor: 'pointer' },
   eligibilityFeedback: { padding: '10px 0' },
   rulesList: { display: 'flex', flexDirection: 'column', gap: '10px' },
-  stepsFlow: { display: 'flex', flexDirection: 'column', gap: '15px' },
-  stepRow: { display: 'flex', gap: '15px', alignItems: 'flex-start' },
-  stepNum: { background: 'var(--primary-color)', color: 'white', minWidth: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.9rem' }
 };
 
 const formatUrl = (url) => {

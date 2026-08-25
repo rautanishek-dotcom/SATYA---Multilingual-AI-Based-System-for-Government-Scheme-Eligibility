@@ -40,7 +40,7 @@ const Login = () => {
       } else {
         setError(data.error || t('LoginFailed', 'Login failed'));
       }
-    } catch (err) {
+    } catch {
       setError(t('ConnectionError', 'Cannot connect to server'));
     } finally {
       setLoading(false);

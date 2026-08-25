@@ -4,6 +4,13 @@
 
 ---
 
+## 🚀 Recent Updates
+
+- **Document Vault**: Streamlined verification flow by bypassing legacy OTP requirements, refined the extraction preview UI, and simplified the review interface by omitting redundant fields.
+- **Chatbot Interface**: Improved chat persistence mechanisms (domain selection, clear chat functionality), modernized UI by removing obsolete elements, and polished visual indicators.
+
+---
+
 ## 🏗️ Project Architecture
 
 ```mermaid

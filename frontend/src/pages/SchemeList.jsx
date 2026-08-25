@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Search, AlertCircle, X, Target, ClipboardList, Info,
@@ -32,20 +32,20 @@ const SchemeList = () => {
   const occupationOptions = ['All', 'Farmer', 'Student', 'Worker', 'Business', 'Service', 'Retired'];
   const typeOptions       = ['All', 'Agriculture', 'Health', 'Education', 'Housing', 'Business', 'Social Welfare', 'Pension'];
 
-  useEffect(() => { fetchSchemes(); }, [i18n.language]);
-
-  const fetchSchemes = async () => {
+  const fetchSchemes = useCallback(async () => {
     try {
       const res = await fetch(`http://localhost:5000/api/schemes/?lang=${i18n.language}`);
       if (!res.ok) throw new Error(t('FetchError', 'Failed to fetch schemes'));
       setSchemes(await res.json());
-    } catch (err) {
-      console.error(err);
+    } catch (_err) {
+      console.error(_err);
       setError(t('ConnectionError', 'Could not connect to server. Ensure backend is running.'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [i18n.language, t]);
+
+  useEffect(() => { fetchSchemes(); }, [fetchSchemes]);
 
   const handleFilterChange = (name, value) =>
     setFilters(prev => ({ ...prev, [name]: value }));

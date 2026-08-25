@@ -239,7 +239,7 @@ class DocumentManager:
             return ""
 
     def _run_ocr(self, image_paths: List[str]) -> Tuple[str, List[Dict[str, Any]], float]:
-        best_text = []
+        text_parts = []
         candidates: List[Dict[str, Any]] = []
         confidences: List[float] = []
 
@@ -249,8 +249,11 @@ class DocumentManager:
                 continue
             candidate = ocr_result.get("best")
             if candidate and candidate.text:
-                best_text.append(candidate.text)
+                text_parts.append(candidate.text)
                 confidences.append(float(candidate.confidence or 0.0))
+            for item in ocr_result.get("candidates", []):
+                if getattr(item, "text", ""):
+                    text_parts.append(item.text)
             candidates.extend([
                 {
                     "engine": item.engine,
@@ -261,10 +264,10 @@ class DocumentManager:
                 for item in ocr_result.get("candidates", [])
             ])
 
-        if not best_text and not candidates:
+        if not text_parts and not candidates:
             candidates = multi_ocr_candidates(image_paths[0]) if image_paths else []
 
-        full_text = "\n".join([text for text in best_text if text]).strip()
+        full_text = "\n".join([text for text in text_parts if text]).strip()
         average_confidence = float(sum(confidences) / max(len(confidences), 1)) if confidences else 0.0
         return full_text, candidates, average_confidence
 
@@ -334,17 +337,45 @@ class DocumentManager:
         try:
             # ── Stage 3: PDF/Image Conversion ────────────────────────────────────
             t0 = time.time()
+            is_digital_pdf = False
+            raw_text = ""
+            ocr_candidates = []
+            ocr_confidence = 0.0
+            hint_text = ""
+            ocr_engine = "none"
+
             if ext == ".pdf":
-                image_paths = self._convert_pdf_to_images(temp_path)
+                # Try getting text directly first
+                pdf_text = ""
+                try:
+                    from vault.ocr_utils import _extract_pdf_text
+                    pdf_text = _extract_pdf_text(temp_path)
+                except Exception:
+                    pass
+                
+                if pdf_text and len(pdf_text.strip()) > 20:
+                    is_digital_pdf = True
+                    raw_text = pdf_text
+                    ocr_candidates = [{"engine": "pdf-text", "lang": "text", "text": pdf_text, "confidence": 96.0}]
+                    ocr_confidence = 96.0
+                    ocr_engine = "pdf-text"
+                    hint_text = quick_document_hint(temp_path)
+                    
+                    # Convert only the first page for thumbnail/preview if it's a digital PDF
+                    image_paths = self._convert_pdf_to_images(temp_path)
+                    processed_paths = [image_paths[0]] if image_paths else [temp_path]
+                else:
+                    image_paths = self._convert_pdf_to_images(temp_path)
             else:
                 image_paths = [temp_path]
             timings["conversion"] = round(time.time() - t0, 3)
 
-            # ── Stage 4: Preprocessing ───────────────────────────────────────────
+            # ── Stage 4: Preprocessing (Skip if Digital PDF) ────────────────────
             t0 = time.time()
-            for page_image in image_paths:
-                processed = self._preprocess_image(page_image)
-                processed_paths.append(processed or page_image)
+            if not is_digital_pdf:
+                for page_image in image_paths:
+                    processed = self._preprocess_image(page_image)
+                    processed_paths.append(processed or page_image)
             timings["preprocessing"] = round(time.time() - t0, 3)
 
             if not processed_paths:
@@ -353,13 +384,14 @@ class DocumentManager:
 
             primary_path = processed_paths[0]
 
-            # ── Stage 5: OCR ─────────────────────────────────────────────────────
-            t0 = time.time()
-            hint_text = quick_document_hint(primary_path)
-            raw_text, ocr_candidates, ocr_confidence = self._run_ocr(processed_paths)
-            timings["ocr"] = round(time.time() - t0, 3)
-            ocr_engine = ocr_candidates[0].get("engine", "unknown") if ocr_candidates else "none"
-            logger.info("[STAGE:OCR] END %.3fs engine=%s confidence=%.1f%%", timings["ocr"], ocr_engine, ocr_confidence)
+            # ── Stage 5: OCR (Skip if Digital PDF) ───────────────────────────────
+            if not is_digital_pdf:
+                t0 = time.time()
+                hint_text = quick_document_hint(primary_path)
+                raw_text, ocr_candidates, ocr_confidence = self._run_ocr(processed_paths)
+                timings["ocr"] = round(time.time() - t0, 3)
+                ocr_engine = ocr_candidates[0].get("engine", "unknown") if ocr_candidates else "none"
+                logger.info("[STAGE:OCR] END %.3fs engine=%s confidence=%.1f%%", timings["ocr"], ocr_engine, ocr_confidence)
 
             # ── Stage 6: QR Decode ───────────────────────────────────────────────
             t0 = time.time()
@@ -401,9 +433,23 @@ class DocumentManager:
 
             # ── Build ocr_data (immutable) ───────────────────────────────────────
             ocr_data = {
-                "owner_name": structured_fields.get("name", {}).get("value", ""),
-                "document_number": structured_fields.get("identity_number", {}).get("value", ""),
-                "dob": structured_fields.get("dob", {}).get("value", ""),
+                # Name: Aadhaar stores as "name", generic/PAN also "name"
+                "owner_name": (
+                    structured_fields.get("name", {}).get("value", "")
+                    or structured_fields.get("owner_name", {}).get("value", "")
+                    or structured_fields.get("full_name", {}).get("value", "")
+                ),
+                # Document number: Aadhaar uses "document_number", generic uses "identity_number"
+                "document_number": (
+                    structured_fields.get("document_number", {}).get("value", "")
+                    or structured_fields.get("identity_number", {}).get("value", "")
+                    or structured_fields.get("masked_aadhaar", {}).get("value", "")
+                    or structured_fields.get("aadhaar_reference_id", {}).get("value", "")
+                ),
+                "dob": (
+                    structured_fields.get("dob", {}).get("value", "")
+                    or structured_fields.get("date_of_birth", {}).get("value", "")
+                ),
                 "gender": structured_fields.get("gender", {}).get("value", ""),
                 "issue_date": structured_fields.get("issue_date", {}).get("value", ""),
                 "expiry_date": structured_fields.get("expiry_date", {}).get("value", ""),
@@ -458,6 +504,15 @@ class DocumentManager:
             from vault.verification_status import DocumentStatus, ConfidenceTier
             document_status = DocumentStatus.AWAITING_REVIEW
             confidence_tier = ConfidenceTier.from_score(ocr_confidence)
+
+            # ── Stage 12.5: Extraction Validation ────────────────────────────────
+            # We must not auto-accept merely because OCR completed. 
+            if document_type == "aadhaar_ocr" and not ocr_data.get("document_number"):
+                confidence_tier = ConfidenceTier.POOR
+                document_status = getattr(DocumentStatus, "NEEDS_REVIEW", "needs_review")
+            elif document_type == "pan" and not ocr_data.get("document_number"):
+                # If PAN regex failed, the identity_number won't be set
+                document_status = getattr(DocumentStatus, "NEEDS_REVIEW", "needs_review")
 
             # ── Build the full MongoDB record ────────────────────────────────────
             now = datetime.datetime.utcnow()

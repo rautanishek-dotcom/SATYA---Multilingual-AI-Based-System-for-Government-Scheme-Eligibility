@@ -45,6 +45,7 @@ class DocumentIntelligenceOrchestrator:
     def _collect_ocr_text(self, file_path: str):
         hint_text = quick_document_hint(file_path)
         ocr_result = ocr_document(file_path, lang_hints=["eng", "en"])
+        candidate_texts = []
         candidates = [
             {
                 "engine": item.engine,
@@ -54,10 +55,30 @@ class DocumentIntelligenceOrchestrator:
             }
             for item in (ocr_result.get("candidates") or [])
         ]
+        for item in ocr_result.get("candidates") or []:
+            if getattr(item, "text", ""):
+                candidate_texts.append(item.text)
         best = ocr_result.get("best")
         raw_text = best.text if best else ""
-        combined = " ".join(part for part in [hint_text, raw_text] if part).strip()
+        combined = " ".join(part for part in [hint_text, raw_text, " ".join(candidate_texts)] if part).strip()
         return combined or raw_text, candidates, hint_text
+
+    def _classify_document(self, file_path: str, original_filename: str, hint_blob: str, raw_text: str, force_engine: str = None):
+        if force_engine:
+            forced = _map_force_engine(force_engine)
+            if forced:
+                return forced
+
+        candidates = [
+            self.classifier.classify(original_filename or file_path, hint_text=hint_blob, ocr_text=raw_text),
+            self.classifier.classify(file_path, hint_text=" ".join(part for part in [hint_blob, raw_text] if part), ocr_text=raw_text),
+        ]
+        supported = [item for item in candidates if item.get("supported")]
+        if supported:
+            supported.sort(key=lambda item: float(item.get("confidence", 0.0)), reverse=True)
+            return supported[0]
+        candidates.sort(key=lambda item: float(item.get("confidence", 0.0)), reverse=True)
+        return candidates[0]
 
     def infer(self, user_id: str, file_path: str, original_filename: str, share_code: str = None, force_engine: str = None):
         if not os.path.exists(file_path):
@@ -69,21 +90,27 @@ class DocumentIntelligenceOrchestrator:
         preflight_hint = quick_document_hint(file_path)
         hint_blob = " ".join(part for part in [preflight_hint, qr_payload] if part)
 
-        classification = self.classifier.classify(file_path, hint_text=hint_blob)
-        if force_engine:
-            forced = _map_force_engine(force_engine)
-            if forced:
-                classification = forced
-
         raw_text, ocr_candidates, hint_text = self._collect_ocr_text(file_path)
+        combined_hint = " ".join(part for part in [hint_blob, hint_text] if part).strip()
+        classification = self._classify_document(file_path, original_filename, combined_hint, raw_text, force_engine=force_engine)
+
         document_type = classification.get("document_type", "government_certificate")
+        if document_type in {"unknown", "pending_ocr", "other_document"}:
+            fallback = self.classifier.classify(
+                original_filename or file_path,
+                hint_text=" ".join(part for part in [combined_hint, raw_text, qr_payload] if part),
+                ocr_text=raw_text,
+            )
+            if fallback.get("supported") or float(fallback.get("confidence", 0.0)) > float(classification.get("confidence", 0.0)):
+                classification = fallback
+                document_type = classification.get("document_type", document_type)
 
         extracted = extract_structured_document_fields(
             file_path,
             document_type=document_type,
             user_name=None,
             share_code=share_code,
-            hint_text=hint_text,
+            hint_text=combined_hint,
             qr_payload=qr_payload,
         )
 

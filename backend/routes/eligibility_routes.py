@@ -15,6 +15,7 @@ from bson import ObjectId
 from vault.utils import VaultUtils
 from vault.audit import AuditLogger
 from routes.schemes import calculate_eligible_schemes_internal
+from services.otp_service import verify_otp
 
 logger = logging.getLogger(__name__)
 eligibility_bp = Blueprint('eligibility', __name__)
@@ -177,6 +178,180 @@ def verify_eligibility():
         _ELIGIBILITY_CACHE[cache_k] = response
 
     return jsonify(response), 200
+
+@eligibility_bp.route('/verify-with-otp', methods=['POST'])
+def verify_eligibility_with_otp():
+    """
+    Identical to /verify, but requires a valid OTP code in the payload.
+    """
+    data = request.json or {}
+    user_id = data.get("user_id")
+    otp_code = data.get("otp_code")
+    
+    if not user_id:
+        return jsonify({"error": "user_id is required"}), 400
+        
+    if not otp_code:
+        return jsonify({"error": "OTP is required"}), 400
+
+    # 1. Verify OTP first
+    ip = request.headers.get("X-Forwarded-For", request.remote_addr or "")
+    ua = request.headers.get("User-Agent", "")
+    
+    otp_result = verify_otp(
+        user_id=user_id,
+        otp_code=otp_code,
+        purpose="eligibility_check",
+        ip_address=ip,
+        user_agent=ua
+    )
+    
+    if not otp_result.get("success"):
+        status_code = 400
+        if "attempt" in otp_result.get("message", "").lower():
+            status_code = 429
+        return jsonify({
+            "error": otp_result.get("message"),
+            "identity_verified": False
+        }), status_code
+
+    # 2. Proceed with exact same logic as /verify
+    # (Since we're in the same blueprint, we can just call the internal logic or copy it.
+    # For simplicity, we just reuse the code blocks from verify_eligibility.)
+    
+    db = get_db()
+    if db is None:
+        return jsonify({"error": "Database unavailable"}), 500
+
+    doc = db.vault_documents.find_one(
+        {
+            "user_id": str(user_id),
+            "document_status": "Accepted",
+            "is_active": True,
+        },
+        sort=[("created_at", -1)]
+    )
+
+    if not doc:
+        return jsonify({
+            "identity_verified": False,
+            "reason": "No verified document found in your Document Vault. "
+                      "Upload and verify a government document before checking eligibility."
+        }), 200
+
+    doc_hash = doc.get("document_hash", "")
+    cache_k = _cache_key(str(user_id), doc_hash)
+    cached = _ELIGIBILITY_CACHE.get(cache_k)
+    if cached and not data.get("force_recheck"):
+        logger.info("[ELIGIBILITY] Cache hit for user=%s doc_hash=%s", user_id, doc_hash[:12])
+        return jsonify(cached), 200
+
+    vdata = doc.get("verified_data") or doc.get("metadata", {})
+
+    data_name = VaultUtils.canonicalize_name(data.get("name"))
+    data_dob = VaultUtils.normalize_date(data.get("dob"))
+    data_gender = VaultUtils.normalize_gender(data.get("gender"))
+    data_state = (data.get("state") or "").strip().lower()
+    data_district = (data.get("district") or "").strip().lower()
+
+    doc_name = VaultUtils.canonicalize_name(vdata.get("owner_name"))
+    doc_dob = VaultUtils.normalize_date(vdata.get("dob"))
+    doc_gender = VaultUtils.normalize_gender(vdata.get("gender"))
+    doc_state = (vdata.get("state") or "").strip().lower()
+    doc_district = (vdata.get("district") or "").strip().lower()
+
+    name_similarity = VaultUtils.similarity(data_name, doc_name)
+    name_score = (name_similarity / 100.0) * 50
+    dob_match = (data_dob == doc_dob and data_dob != "")
+    dob_score = 30 if dob_match else 0
+    gender_match = (data_gender == doc_gender and data_gender != "")
+    gender_score = 10 if gender_match else 0
+
+    if doc_district and data_district:
+        state_match = (data_state == doc_state and data_state != "")
+        state_score = 5 if state_match else 0
+        district_match = (data_district == doc_district)
+        district_score = 5 if district_match else 0
+    else:
+        state_match = (data_state == doc_state and data_state != "")
+        state_score = 10 if state_match else 0
+        district_score = 0
+        district_match = False
+
+    total_score = name_score + dob_score + gender_score + state_score + district_score
+    confidence = doc.get("confidence", 0)
+
+    verified = True
+    reason = ""
+
+    if confidence < 80:
+        verified = False
+        reason = "OCR confidence too low. Please upload a clearer document."
+    elif not dob_match:
+        verified = False
+        reason = "Date of Birth does not match your document."
+    elif total_score < 90:
+        verified = False
+        reason = f"Identity match score ({total_score:.1f}%) is below the required threshold (90%)."
+
+    result = None
+    if verified:
+        result = calculate_eligible_schemes_internal(data, db)
+
+    match_breakdown = {
+        "name": {"score": round(name_score, 1), "similarity": round(name_similarity, 1)},
+        "dob": {"score": dob_score, "match": dob_match},
+        "gender": {"score": gender_score, "match": gender_match},
+        "state": {"score": state_score, "match": state_match},
+        "district": {"score": district_score, "match": district_match},
+        "total": round(total_score, 1),
+    }
+
+    response = {
+        "identity_verified": verified,
+        "match_score": round(total_score, 1),
+        "match_breakdown": match_breakdown,
+        "matched_document_id": str(doc["_id"]),
+        "document_type": doc.get("document_type", ""),
+        "confidence": confidence,
+    }
+
+    if verified:
+        response["eligible_schemes"] = result
+    else:
+        response["reason"] = reason
+
+    audit_data = {
+        "user_id": user_id,
+        "matched_document_id": str(doc["_id"]),
+        "match_score": round(total_score, 1),
+        "identity_verified": verified,
+        "verified_at": datetime.datetime.utcnow().isoformat(),
+        "eligible_scheme_count": len(result.get("eligible", [])) if verified and result else 0,
+        "match_breakdown": match_breakdown,
+        "verified_with_otp": True,
+    }
+    AuditLogger.record("eligibility_check", user_id, audit_data, document_id=str(doc["_id"]))
+
+    try:
+        from bson import ObjectId
+        db.users.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$set": {
+                "identity_verified": verified,
+                "identity_match_score": round(total_score, 1),
+                "matched_document_id": str(doc["_id"]),
+                "verification_timestamp": audit_data["verified_at"]
+            }}
+        )
+    except Exception as e:
+        logger.error("Error updating user verification metadata: %s", e)
+
+    if verified and doc_hash:
+        _ELIGIBILITY_CACHE[cache_k] = response
+
+    return jsonify(response), 200
+
 
 
 @eligibility_bp.route('/cache/invalidate', methods=['POST'])

@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, Server, FileText, Database, Shield, Zap, TrendingUp, AlertTriangle } from 'lucide-react';
 
 const API_BASE = 'http://localhost:5000/api/vault';
@@ -29,8 +28,8 @@ export default function AdminDiagnostics() {
       setHealth(healthData);
       setAnalytics(analyticsData);
       setError(null);
-    } catch (err) {
-      console.error('Diagnostics fetch failed:', err);
+    } catch {
+      console.error('Diagnostics fetch failed');
       setError('Could not connect to the backend server.');
     } finally {
       setLoading(false);

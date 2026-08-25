@@ -11,7 +11,6 @@ const FloatingChatbot = () => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
-  const [welcomeMessage, setWelcomeMessage] = useState(t('ChatWelcome'));
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -22,7 +21,6 @@ const FloatingChatbot = () => {
         const response = await fetch(`http://localhost:5000/api/chatbot/suggestions?lang=${langCode}`);
         const data = await response.json();
         if (data.suggestions) setSuggestions(data.suggestions);
-        if (data.welcome_message) setWelcomeMessage(data.welcome_message);
       } catch (err) {
         console.error('Localization fetch error:', err);
       }

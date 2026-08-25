@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useDeferredValue, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useCallback, useEffect, useMemo, useDeferredValue, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   Shield, Upload, Search, RefreshCw, ShieldCheck, Lock,
   AlertTriangle, CheckCircle2, XCircle, Clock3, Sparkles, Trash2,
@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import DocumentReviewModal from '../components/DocumentReviewModal';
+import OTPVerificationModal from '../components/OTPVerificationModal';
 
 const API_BASE = 'http://localhost:5000/api/vault';
 const SUPPORTS = [
@@ -37,11 +38,6 @@ const displayValue = (value) => {
     return candidate ? String(candidate) : 'Not Available';
   }
   return String(value);
-};
-
-const displayNumber = (value) => {
-  const raw = displayValue(value);
-  return raw === 'Not Available' ? raw : raw;
 };
 
 const normalizeIdentityProfile = (profile = {}) => ({
@@ -153,39 +149,47 @@ function Badge({ children, tone = 'slate' }) {
 function StatCard({ icon: Icon, label, value, accent, subtext }) {
   return (
     <div style={{
-      background: 'rgba(255,255,255,0.86)',
-      border: '1px solid rgba(148,163,184,0.18)',
-      borderRadius: 22,
-      padding: 20,
-      backdropFilter: 'blur(18px)',
-      boxShadow: '0 20px 50px rgba(15,23,42,0.08)',
+      background: 'rgba(255,255,255,0.85)',
+      border: '1px solid rgba(148,163,184,0.15)',
+      borderRadius: 24,
+      padding: '20px 22px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 16,
+      boxShadow: '0 18px 50px rgba(15,23,42,0.07)',
+      backdropFilter: 'blur(16px)',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <div style={{
-          width: 48,
-          height: 48,
-          borderRadius: 16,
-          background: accent,
-          color: '#fff',
-          display: 'grid',
-          placeItems: 'center',
-          boxShadow: `0 10px 24px ${accent}40`,
-        }}>
-          <Icon size={22} />
-        </div>
-        <div>
-          <div style={{ color: '#64748b', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-            {label}
-          </div>
-          <div style={{ color: '#0f172a', fontSize: 26, fontWeight: 800, lineHeight: 1.05 }}>
-            {value}
-          </div>
-          {subtext && <div style={{ color: '#64748b', fontSize: 12, marginTop: 4 }}>{subtext}</div>}
-        </div>
+      <div style={{
+        width: 52,
+        height: 52,
+        borderRadius: 18,
+        background: `${accent}18`,
+        display: 'grid',
+        placeItems: 'center',
+        color: accent,
+        flexShrink: 0,
+      }}>
+        {Icon && <Icon size={24} />}
+      </div>
+      <div>
+        <div style={{ color: '#64748b', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</div>
+        <div style={{ color: '#0f172a', fontSize: 26, fontWeight: 900, lineHeight: 1.1, marginTop: 2 }}>{value}</div>
+        {subtext && <div style={{ color: '#94a3b8', fontSize: 12, marginTop: 2 }}>{subtext}</div>}
       </div>
     </div>
   );
 }
+
+function LockRow({ icon: Icon, label, value }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0' }}>
+      {Icon && <Icon size={15} style={{ color: '#64748b', flexShrink: 0 }} />}
+      <span style={{ color: '#64748b', fontSize: 13, minWidth: 130 }}>{label}</span>
+      <span style={{ color: '#0f172a', fontSize: 13, fontWeight: 700 }}>{value || 'Not Available'}</span>
+    </div>
+  );
+}
+
 
 function DocumentCard({ doc, onDelete, onDownload, onPreview }) {
   const status = (doc.document_status || doc.verification_status || '').toUpperCase();
@@ -201,12 +205,7 @@ function DocumentCard({ doc, onDelete, onDownload, onPreview }) {
   const statusLabel = isAccepted ? 'Accepted' : isRejected ? 'Rejected' : isReview ? 'Awaiting Review' : status || 'Pending';
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 18 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.98 }}
-      whileHover={{ y: -4 }}
+    <div
       style={{
         background: 'rgba(255,255,255,0.9)',
         border: '1px solid rgba(148,163,184,0.14)',
@@ -299,7 +298,7 @@ function DocumentCard({ doc, onDelete, onDownload, onPreview }) {
           </button>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -415,30 +414,10 @@ function IdentityLockCard({ identity, resetAvailable, onReset }) {
   );
 }
 
-function LockRow({ icon: Icon, label, value }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-      <div style={{ width: 28, height: 28, borderRadius: 10, background: 'rgba(255,255,255,0.6)', display: 'grid', placeItems: 'center', color: '#2563eb' }}>
-        <Icon size={14} />
-      </div>
-      <div style={{ minWidth: 110, color: '#64748b', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-        {label}
-      </div>
-      <div style={{ color: '#0f172a', fontWeight: 800 }}>{value}</div>
-    </div>
-  );
-}
-
 function Modal({ title, subtitle, children, onClose, width = 620 }) {
   return (
     <div style={styles.modalOverlay} onClick={onClose}>
-      <motion.div
-        initial={{ opacity: 0, y: 18, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 18, scale: 0.98 }}
-        onClick={(e) => e.stopPropagation()}
-        style={{ ...styles.modalCard, width, maxWidth: 'calc(100vw - 32px)' }}
-      >
+      <div onClick={(e) => e.stopPropagation()} style={{ ...styles.modalCard, width, maxWidth: 'calc(100vw - 32px)' }}>
         <div style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 42, height: 42, borderRadius: 14, background: '#fee2e2', color: '#dc2626', display: 'grid', placeItems: 'center' }}>
@@ -451,7 +430,7 @@ function Modal({ title, subtitle, children, onClose, width = 620 }) {
           </div>
         </div>
         {children}
-      </motion.div>
+      </div>
     </div>
   );
 }
@@ -472,13 +451,17 @@ export default function DocumentVault() {
   const [pendingUpload, setPendingUpload] = useState(null);
   const [confirmation, setConfirmation] = useState(null);
   const [reviewDoc, setReviewDoc] = useState(null); // New state for review modal
+  
+  // OTP State for document review confirmation
+  const [showOTPModal, setShowOTPModal] = useState(false);
+  const [pendingReviewData, setPendingReviewData] = useState(null);
   const [banner, setBanner] = useState(null);
   const [error, setError] = useState(null);
   const [resetOpen, setResetOpen] = useState(false);
   const [resetPassword, setResetPassword] = useState('');
   const [resetBusy, setResetBusy] = useState(false);
 
-  const fetchIdentity = async () => {
+  const fetchIdentity = useCallback(async () => {
     if (!userId) return;
     const res = await apiFetch(`/identity?user_id=${encodeURIComponent(userId)}`);
     const data = await res.json();
@@ -491,9 +474,9 @@ export default function DocumentVault() {
         nextResetAllowedAt: data.nextResetAllowedAt,
       }));
     }
-  };
+  }, [userId]);
 
-  const fetchVault = async (search = '') => {
+  const fetchVault = useCallback(async (search = '') => {
     if (!userId) return;
     setLoading(true);
     const path = search ? `/search?user_id=${encodeURIComponent(userId)}&q=${encodeURIComponent(search)}` : `/?user_id=${encodeURIComponent(userId)}`;
@@ -512,7 +495,7 @@ export default function DocumentVault() {
       setError({ title: 'Vault load failed', message: data.error || 'Could not load your vault.' });
     }
     setLoading(false);
-  };
+  }, [userId]);
 
   useEffect(() => {
     let active = true;
@@ -528,7 +511,7 @@ export default function DocumentVault() {
     return () => {
       active = false;
     };
-  }, [userId]);
+  }, [userId, fetchIdentity, fetchVault]);
 
   useEffect(() => {
     if (!userId) return undefined;
@@ -536,7 +519,7 @@ export default function DocumentVault() {
       fetchVault(deferredQuery.trim());
     }, 300);
     return () => clearTimeout(timer);
-  }, [deferredQuery, userId]);
+  }, [deferredQuery, userId, fetchVault]);
 
   const handleUpload = async (file, confirm_match = false) => {
     if (!file || uploading) return;
@@ -620,6 +603,7 @@ export default function DocumentVault() {
 
   const handleReviewConfirm = async (verifiedData, corrections) => {
     if (!reviewDoc) return;
+    
     try {
       const res = await apiFetch('/confirm_review', {
         method: 'POST',
@@ -641,10 +625,10 @@ export default function DocumentVault() {
         });
         await Promise.all([fetchVault(query), fetchIdentity()]);
       } else {
-        setError({ title: 'Review Failed', message: data.error || 'Could not save review.' });
+        setError({ title: 'Verification Failed', message: data.error || 'Could not save review.' });
       }
-    } catch (err) {
-      setError({ title: 'Review Failed', message: 'Could not reach server.' });
+    } catch {
+      setError({ title: 'Verification Failed', message: 'Could not reach server to save review.' });
     }
   };
 
@@ -690,15 +674,15 @@ export default function DocumentVault() {
       } else {
         setError({ title: 'Reset failed', message: data.error || 'Could not reset identity lock.' });
       }
-    } catch (err) {
+    } catch {
       setError({ title: 'Reset failed', message: 'Could not reach the server.' });
     } finally {
       setResetBusy(false);
     }
   };
 
-  const acceptedCount = documents.filter((d) => (d.verification_status || '').toUpperCase() === 'ACCEPTED').length;
-  const rejectedCount = documents.filter((d) => (d.verification_status || '').toUpperCase() === 'REJECTED').length;
+  const acceptedCount = documents.filter((d) => (d.document_status || d.verification_status || '').toUpperCase() === 'ACCEPTED').length;
+  const rejectedCount = documents.filter((d) => (d.document_status || d.verification_status || '').toUpperCase() === 'REJECTED').length;
   const pendingCount = documents.length - acceptedCount - rejectedCount;
   const avgConfidence = documents.length
     ? Math.round(documents.reduce((acc, doc) => acc + (doc.confidence || 0), 0) / documents.length)
@@ -1018,6 +1002,7 @@ export default function DocumentVault() {
       </AnimatePresence>
 
       <DocumentReviewModal
+        key={reviewDoc?.document_id || 'review-modal'}
         isOpen={!!reviewDoc}
         document={reviewDoc?.document || {}}
         onClose={() => {

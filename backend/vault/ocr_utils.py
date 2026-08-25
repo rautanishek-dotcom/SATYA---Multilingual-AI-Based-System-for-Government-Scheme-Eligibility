@@ -52,6 +52,20 @@ try:
 except Exception:
     PYPDF2_AVAILABLE = False
 
+if PADDLEOCR_AVAILABLE:
+    try:
+        import paddle  # type: ignore
+
+        analysis_config = getattr(getattr(paddle, "base", None), "libpaddle", None)
+        if not analysis_config or not hasattr(analysis_config.AnalysisConfig, "set_optimization_level"):
+            logger.warning(
+                "[OCR] PaddleOCR disabled because the installed Paddle backend is incompatible with this environment."
+            )
+            PADDLEOCR_AVAILABLE = False
+    except Exception:
+        logger.warning("[OCR] PaddleOCR disabled because the Paddle backend could not be probed safely.")
+        PADDLEOCR_AVAILABLE = False
+
 
 @dataclass
 class OCRCandidate:
@@ -483,6 +497,26 @@ def _first_regex_match(patterns, text, flags=re.IGNORECASE):
     return None
 
 
+def _extract_value_after_label(text: str, labels: List[str]) -> str:
+    raw_text = _normalize_text(text)
+    if not raw_text:
+        return ""
+    lines = [line.strip() for line in re.split(r"[\r\n]+", raw_text) if line.strip()]
+    lower_labels = [label.lower() for label in labels]
+    for idx, line in enumerate(lines):
+        line_l = line.lower()
+        for label in lower_labels:
+            if label in line_l:
+                value = line.split(":", 1)[-1].strip() if ":" in line else ""
+                if value and value.lower() != label:
+                    return value
+                if idx + 1 < len(lines):
+                    candidate = lines[idx + 1].strip()
+                    if candidate and candidate.lower() not in lower_labels:
+                        return candidate
+    return ""
+
+
 def _merge_field(current: Dict, value: str, confidence: float, source: str):
     value = _sanitize_ocr_token(value)
     if not value:
@@ -495,6 +529,11 @@ def _merge_field(current: Dict, value: str, confidence: float, source: str):
 def _extract_name_from_text_block(text, user_name=None):
     text = _normalize_text(text)
     lines = [line.strip() for line in re.split(r"[\r\n]+", text) if line.strip()]
+    value_after_label = _extract_value_after_label(text, ["name", "holder name", "resident name"])
+    if value_after_label:
+        candidate = VaultUtils.canonicalize_name(value_after_label)
+        if candidate:
+            return _field(candidate, 92.0, "label")
     patterns = [
         r"\bname\b\s*[:\-]\s*([^\n\r,;|]+)",
         r"\bholder name\b\s*[:\-]\s*([^\n\r,;|]+)",
@@ -503,6 +542,16 @@ def _extract_name_from_text_block(text, user_name=None):
     match = _first_regex_match(patterns, text)
     if match:
         return _field(VaultUtils.canonicalize_name(match.group(1)), 97.0, "label")
+
+    # Positional heuristic for Aadhaar layout: name is printed directly above DOB
+    name_before_dob = re.search(
+        r'([A-Z][A-Za-z\.]+(?:\s+[A-Z][A-Za-z\.]+){0,4})\s*(?:\n|[\|/]|\s{2,})(?:(?:dob|date of birth|d\.o\.b|Year of Birth|\d{2}[/\-]\d{2}[/\-]\d{4}|male|female))',
+        text, re.IGNORECASE
+    )
+    if name_before_dob:
+        candidate = VaultUtils.canonicalize_name(name_before_dob.group(1).strip())
+        if candidate:
+            return _field(candidate, 90.0, "positional")
 
     for line in lines:
         line_l = line.lower()
@@ -520,6 +569,11 @@ def _extract_name_from_text_block(text, user_name=None):
 
 def _extract_dob_from_text_block(text):
     text = _normalize_text(text)
+    value_after_label = _extract_value_after_label(text, ["dob", "date of birth", "year of birth", "yob"])
+    if value_after_label:
+        normalized = VaultUtils.normalize_date(value_after_label)
+        if normalized:
+            return _field(normalized, 92.0, "label")
     patterns = [
         r"\b(?:dob|date of birth|year of birth|yob)\s*[:\-]?\s*(\d{2}[/-]\d{2}[/-]\d{4})",
         r"\b(?:dob|date of birth|year of birth|yob)\s*[:\-]?\s*(\d{4}[/-]\d{2}[/-]\d{2})",
@@ -566,6 +620,9 @@ def _extract_address_from_text_block(text):
     text = _normalize_text(text)
     if not text:
         return _field()
+    value_after_label = _extract_value_after_label(text, ["address", "addr", "residence", "resident"])
+    if value_after_label:
+        return _field(VaultUtils.clean_extracted_text(value_after_label), 90.0, "label")
     address_patterns = [
         r"\b(?:address|addr|residence|resident)\s*[:\-]?\s*(.+)",
         r"\b(?:c/o|s/o|d/o|w/o|care of)\s+(.+)",
@@ -672,13 +729,16 @@ def _refine_field(field_name, field, source_hint=""):
 
     if field_name in {"name", "bride", "groom", "parents"}:
         value = VaultUtils.canonicalize_name(value)
-        confidence = max(confidence, _field_value_confidence(value, 86.0))
+        if confidence <= 0:
+            confidence = _field_value_confidence(value, 72.0)
     elif field_name in {"dob", "marriage_date"}:
         value = VaultUtils.normalize_date(value)
-        confidence = max(confidence, _field_value_confidence(value, 88.0))
+        if confidence <= 0:
+            confidence = _field_value_confidence(value, 78.0)
     elif field_name in {"gender"}:
         value = VaultUtils.normalize_gender(value)
-        confidence = max(confidence, _field_value_confidence(value, 90.0))
+        if confidence <= 0:
+            confidence = _field_value_confidence(value, 80.0)
     elif field_name in {"masked_aadhaar", "aadhaar_reference_id", "identity_number", "certificate_number", "pin_code"}:
         corrected = re.sub(r"[OQ]", "0", value, flags=re.IGNORECASE)
         corrected = re.sub(r"[Il|]", "1", corrected)
@@ -695,10 +755,12 @@ def _refine_field(field_name, field, source_hint=""):
             value = digits if field_name != "masked_aadhaar" else VaultUtils.mask_aadhaar(digits[-12:])
         else:
             value = corrected.upper()
-        confidence = max(confidence, _field_value_confidence(value, 88.0))
+        if confidence <= 0:
+            confidence = _field_value_confidence(value, 84.0)
     elif field_name in {"address", "issuing_authority", "caste", "category", "disability_type", "document_type"}:
         value = VaultUtils.clean_extracted_text(value)
-        confidence = max(confidence, _field_value_confidence(value, 84.0))
+        if confidence <= 0:
+            confidence = _field_value_confidence(value, 68.0)
     else:
         value = VaultUtils.clean_extracted_text(value)
 
@@ -784,6 +846,10 @@ def _extract_aadhaar_structured_fields(image, user_name=None, qr_payload=None, h
     if fields["masked_aadhaar"]["value"] and not fields["verification_id"]["value"]:
         fields["verification_id"] = _field(fields["masked_aadhaar"]["value"], fields["masked_aadhaar"]["confidence"], "aadhaar")
 
+    # Expose document_number alias (masked Aadhaar) for unified pipeline mapping
+    if fields.get("masked_aadhaar", {}).get("value"):
+        fields["document_number"] = _field(fields["masked_aadhaar"]["value"], fields["masked_aadhaar"]["confidence"], "aadhaar")
+
     for key in ["name", "dob", "gender", "masked_aadhaar", "aadhaar_reference_id", "address", "pin_code", "state", "district", "verification_id"]:
         fields[key] = _refine_field(key, fields.get(key, _field()), fields[key].get("source", "aadhaar") if isinstance(fields.get(key), dict) else "aadhaar")
 
@@ -855,6 +921,45 @@ def _extract_aadhaar_xml_fields(file_path, share_code):
     extracted["digital_signature"] = _field("Present" if "signature" in raw_xml.lower() or "ds:" in raw_xml.lower() else "", 85.0 if raw_xml else 0.0, "xml")
     extracted["raw_xml"] = raw_xml
     return extracted
+
+
+def _extract_pdf_text(file_path: str) -> str:
+    """Extract embedded text from a PDF without OCR."""
+    if not file_path or not os.path.exists(file_path):
+        return ""
+    
+    parts = []
+    
+    # Strategy 1: PyPDF2
+    try:
+        if PYPDF2_AVAILABLE:
+            reader = PdfReader(file_path)
+            if not reader.is_encrypted:
+                for page in reader.pages:
+                    text = page.extract_text()
+                    if text:
+                        parts.append(text)
+                if parts:
+                    return "\n".join(parts)
+    except Exception as e:
+        logger.warning(f"PyPDF2 extraction failed for {file_path}: {e}")
+
+    # Strategy 2: PyMuPDF (fitz)
+    try:
+        import fitz # type: ignore
+        doc = fitz.open(file_path)
+        if not doc.is_encrypted:
+            for page in doc:
+                text = page.get_text()
+                if text:
+                    parts.append(text)
+        doc.close()
+        if parts:
+            return "\n".join(parts)
+    except Exception as e:
+        logger.warning(f"PyMuPDF extraction failed for {file_path}: {e}")
+        
+    return ""
 
 
 def extract_structured_document_fields(file_path, document_type=None, user_name=None, share_code=None, hint_text="", qr_payload=None):
@@ -1037,19 +1142,20 @@ _PADDLEOCR_READER = None
 
 def warm_up_ocr_models():
     """Call this at application startup to load OCR models into memory once."""
-    global _PADDLEOCR_READER
+    global _PADDLEOCR_READER, PADDLEOCR_AVAILABLE
     if PADDLEOCR_AVAILABLE and _PADDLEOCR_READER is None:
         t0 = time.time()
         try:
             import logging as _logging
             _logging.getLogger("ppocr").setLevel(_logging.ERROR)
-            _PADDLEOCR_READER = PaddleOCR(use_angle_cls=True, lang="en", use_gpu=False, show_log=False, use_tensorrt=False)
+            _PADDLEOCR_READER = PaddleOCR(use_angle_cls=True, lang="en")
             logger.info("[OCR] PaddleOCR model loaded and ready. Took %.2fs", time.time() - t0)
         except Exception as e:
             logger.error("[OCR] Failed to initialize PaddleOCR: %s\n%s", e, traceback.format_exc())
+            PADDLEOCR_AVAILABLE = False
 
 def _ocr_paddleocr(image, lang="en"):
-    global _PADDLEOCR_READER
+    global _PADDLEOCR_READER, PADDLEOCR_AVAILABLE
     if not PADDLEOCR_AVAILABLE:
         logger.debug("[OCR] PaddleOCR unavailable - skipped.")
         return []
@@ -1059,7 +1165,7 @@ def _ocr_paddleocr(image, lang="en"):
             logger.info("[OCR] PaddleOCR: lazy-loading model...")
             import logging as _logging
             _logging.getLogger("ppocr").setLevel(_logging.ERROR)
-            _PADDLEOCR_READER = PaddleOCR(use_angle_cls=True, lang="en", use_gpu=False, show_log=False, use_tensorrt=False)
+            _PADDLEOCR_READER = PaddleOCR(use_angle_cls=True, lang="en")
             logger.info("[OCR] PaddleOCR: model loaded in %.2fs", time.time() - t0)
         candidates = []
         # PaddleOCR expects 3-channel BGR/RGB images, so do NOT convert to grayscale
@@ -1090,6 +1196,8 @@ def _ocr_paddleocr(image, lang="en"):
         return candidates
     except Exception as e:
         logger.error("[OCR] PaddleOCR exception: %s\n%s", e, traceback.format_exc())
+        PADDLEOCR_AVAILABLE = False
+        _PADDLEOCR_READER = None
         return []
 
 
@@ -1143,6 +1251,21 @@ def ocr_document(file_path, lang_hints=None):
             logger.info("[OCR] Tesseract fallback produced %d candidates.", len(tess_candidates))
         else:
             logger.warning("[OCR] Tesseract fallback also returned no text.")
+
+    # Step 5: If the raw image still did not yield usable text, retry on
+    # stronger enhancement variants before giving up. This helps noisy scans
+    # and low-contrast Aadhaar/PAN captures without adding another OCR pass
+    # when the first pass was already successful.
+    if not candidates or not any(c.text for c in candidates):
+        logger.warning("[OCR] Retrying OCR on enhanced image variants.")
+        for variant in _enhance_image_strong(image):
+            variant_candidates = []
+            variant_candidates.extend(_ocr_paddleocr(variant, lang="en"))
+            if not variant_candidates or not any(c.text for c in variant_candidates):
+                variant_candidates.extend(_ocr_tesseract(variant, lang=_build_tesseract_lang_string(lang_hints)))
+            candidates.extend(variant_candidates)
+            if candidates and any(c.text for c in candidates):
+                break
 
     if not candidates:
         logger.error("[OCR] All OCR engines failed for: %s", file_path)

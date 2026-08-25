@@ -32,7 +32,7 @@ const Register = () => {
       } else {
         setError(data.error || t('RegistrationFailed', 'Registration failed'));
       }
-    } catch (err) {
+    } catch {
       setError(t('ConnectionError', 'Cannot connect to server'));
     } finally {
       setLoading(false);

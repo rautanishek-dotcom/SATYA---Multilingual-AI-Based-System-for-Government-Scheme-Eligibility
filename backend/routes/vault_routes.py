@@ -18,6 +18,7 @@ from vault.policy import RESET_COOLDOWN_HOURS
 from vault.security import SecurityManager
 from vault.verification_orchestrator import VerificationOrchestrator, sanitize_for_json
 from document_intelligence.orchestrator import DocumentIntelligenceOrchestrator
+from services.otp_service import verify_otp
 
 
 logger = logging.getLogger(__name__)
@@ -85,13 +86,14 @@ def upload_document():
         return jsonify({"error": "Missing multipart/form-data"}), 400
 
     user_id = _get_user_id()
+    if not user_id:
+        logger.warning("Upload rejected: missing user_id")
+        return jsonify({"error": "Missing file or user_id"}), 400
+
     file = request.files.get("file")
     if not file:
         logger.warning("Upload rejected: no file received in request.files")
         return jsonify({"error": "No file was received"}), 400
-    if not user_id:
-        logger.warning("Upload rejected: missing user_id")
-        return jsonify({"error": "Missing file or user_id"}), 400
 
     file_mimetype = getattr(file, "content_type", None) or getattr(file, "mimetype", None)
     file_size = getattr(file, "content_length", None)
@@ -410,6 +412,11 @@ def download_document(document_id):
 
 @vault_bp.route("/preview/<document_id>", methods=["GET"])
 def preview_document(document_id):
+    from flask import after_this_request
+    import tempfile
+    import uuid
+    import os
+    
     user_id = request.args.get("user_id")
     if not user_id:
         return jsonify({"error": "user_id required"}), 400
@@ -418,8 +425,35 @@ def preview_document(document_id):
     if not doc or not doc.get("storage_path") or not os.path.exists(doc["storage_path"]):
         return jsonify({"error": "File not found"}), 404
         
-    mimetype = "application/pdf" if doc.get("file_type") == "pdf" else f"image/{doc.get('file_type', 'jpeg')}"
-    return send_file(doc["storage_path"], mimetype=mimetype)
+    decrypted_path = None
+    try:
+        temp_dir = os.path.join(tempfile.gettempdir(), "vault_previews")
+        os.makedirs(temp_dir, exist_ok=True)
+        decrypted_path = os.path.join(temp_dir, f"preview_{uuid.uuid4().hex}_{os.path.basename(doc['storage_path'])}")
+        SecurityManager.decrypt_file(doc["storage_path"], decrypted_path)
+        
+        mimetype = "application/pdf" if doc.get("file_type") == "pdf" else f"image/{doc.get('file_type', 'jpeg')}"
+        response = send_file(decrypted_path, mimetype=mimetype)
+        
+        @after_this_request
+        def cleanup(res):
+            try:
+                if decrypted_path and os.path.exists(decrypted_path):
+                    os.remove(decrypted_path)
+            except Exception:
+                pass
+            return res
+            
+        return response
+    except Exception as e:
+        logger.error(f"Error in preview_document: {e}")
+        # Ensure cleanup on failure as well
+        try:
+            if decrypted_path and os.path.exists(decrypted_path):
+                os.remove(decrypted_path)
+        except Exception:
+            pass
+        return jsonify({"error": "Internal server error"}), 500
 
 @vault_bp.route("/thumbnail/<document_id>", methods=["GET"])
 def thumbnail_document(document_id):
@@ -440,6 +474,124 @@ def vault_stats():
         return jsonify({"error": "user_id required"}), 400
     stats = DocumentVault.get_dashboard_stats(user_id)
     return jsonify(stats), 200
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# NEW: POST /api/vault/confirm_review_with_otp
+# ══════════════════════════════════════════════════════════════════════════════
+
+@vault_bp.route("/confirm_review_with_otp", methods=["POST"])
+def confirm_review_with_otp():
+    """
+    Accept the user's reviewed/corrected metadata for a document, but only
+    after validating the OTP sent to their email.
+    """
+    data = request.get_json(silent=True) or {}
+    user_id = data.get("user_id")
+    document_id = data.get("document_id")
+    verified_fields = data.get("verified_data", {})
+    corrections = data.get("corrections", [])
+    otp_code = data.get("otp_code")
+
+    if not user_id or not document_id:
+        return jsonify({"error": "user_id and document_id are required"}), 400
+        
+    if not otp_code:
+        return jsonify({"error": "OTP is required"}), 400
+
+    # 1. Verify OTP first
+    ip = request.headers.get("X-Forwarded-For", request.remote_addr or "")
+    ua = request.headers.get("User-Agent", "")
+    
+    otp_result = verify_otp(
+        user_id=user_id,
+        otp_code=otp_code,
+        purpose="document_verification",
+        document_id=document_id,
+        ip_address=ip,
+        user_agent=ua
+    )
+    
+    if not otp_result.get("success"):
+        status_code = 400
+        if "attempt" in otp_result.get("message", "").lower():
+            status_code = 429
+        return jsonify({
+            "error": otp_result.get("message"),
+            "verified": False
+        }), status_code
+
+    # 2. Proceed with document review confirmation
+    doc = DocumentVault.get_document_by_id(document_id, user_id=user_id)
+    if not doc:
+        return jsonify({"error": "Document not found"}), 404
+
+    db = get_db()
+    if db is None:
+        return jsonify({"error": "Database unavailable"}), 500
+
+    # Record individual corrections in the audit trail
+    for correction in corrections:
+        AuditLogger.record_correction(
+            user_id=user_id,
+            document_id=document_id,
+            field_name=correction.get("field", ""),
+            ocr_value=correction.get("ocr_value", ""),
+            corrected_value=correction.get("corrected_value", ""),
+            reason=correction.get("reason", ""),
+        )
+
+    AuditLogger.record_review(
+        user_id=user_id,
+        document_id=document_id,
+        decision="confirmed_with_otp",
+        corrections=corrections,
+    )
+
+    # Determine final document_status based on confidence
+    confidence = float(doc.get("confidence", 0))
+    if confidence >= 80.0:
+        final_status = "Accepted"
+    else:
+        final_status = "Rejected"
+
+    now = datetime.datetime.utcnow()
+    update_fields = {
+        "verified_data": verified_fields,
+        "document_status": final_status,
+        "identity_status": "Verified" if final_status == "Accepted" else "Unverified",
+        "verification_status": final_status,
+        "review_timestamp": now,
+        "verification_timestamp": now,
+        "updated_at": now,
+    }
+
+    if verified_fields:
+        update_fields["metadata"] = verified_fields
+
+    from bson import ObjectId as _OID
+    db.vault_documents.update_one(
+        {"_id": _OID(document_id), "user_id": str(user_id)},
+        {"$set": update_fields}
+    )
+
+    # Invalidate eligibility cache for this user
+    try:
+        from routes.eligibility_routes import _ELIGIBILITY_CACHE
+        keys_to_remove = [k for k in _ELIGIBILITY_CACHE if k.startswith(f"{user_id}:")]
+        for k in keys_to_remove:
+            del _ELIGIBILITY_CACHE[k]
+    except Exception:
+        pass
+
+    logger.info("[REVIEW] Document %s confirmed with OTP by user %s -> %s", document_id, user_id, final_status)
+
+    return jsonify({
+        "message": f"Document review and OTP verified. Status: {final_status}",
+        "document_id": document_id,
+        "document_status": final_status,
+        "identity_status": update_fields["identity_status"],
+    }), 200
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -732,4 +884,3 @@ def vault_analytics():
         "ocr_engine_usage": engine_usage,
         "daily_uploads": daily_uploads,
     }), 200
-

@@ -34,8 +34,8 @@ const AdminDashboard = () => {
       });
       const data = await response.json();
       if (response.ok) setStats(data);
-    } catch (err) {
-      console.error("Failed to fetch stats", err);
+    } catch {
+      console.error("Failed to fetch stats");
     }
   };
 
@@ -48,8 +48,8 @@ const AdminDashboard = () => {
       });
       const data = await response.json();
       if (response.ok) setUsersList(data);
-    } catch (err) {
-      console.error("Failed to fetch users", err);
+    } catch {
+      console.error("Failed to fetch users");
     } finally {
       setLoading(false);
     }
@@ -63,8 +63,8 @@ const AdminDashboard = () => {
       });
       const data = await response.json();
       if (response.ok) setSchemesList(data);
-    } catch (err) {
-      console.error("Failed to fetch schemes", err);
+    } catch {
+      console.error("Failed to fetch schemes");
     }
   };
 
@@ -94,7 +94,7 @@ const AdminDashboard = () => {
         const data = await response.json();
         setStatus(data.error || t('SchemeAddedFailed', 'Failed to add scheme.'));
       }
-    } catch (err) {
+    } catch {
       setStatus(t('ErrorConnecting', 'Error connecting to server.'));
     }
   };
@@ -115,7 +115,7 @@ const AdminDashboard = () => {
         const data = await response.json();
         alert(data.error || t('ErrorDeletingScheme', "Error deleting scheme"));
       }
-    } catch (err) {
+    } catch {
       alert(t('ErrorDeletingScheme', "Error deleting scheme"));
     }
   };
@@ -137,7 +137,7 @@ const AdminDashboard = () => {
       } else {
         alert(data.error || t('FailedToDeleteUser', "Failed to delete user"));
       }
-    } catch (err) {
+    } catch {
       alert(t('ErrorDeletingUser', "Error deleting user"));
     }
   };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { 
@@ -77,7 +77,7 @@ const AadhaarScanner = () => {
         setError(result.message || "Failed to scan Aadhaar");
         setStep(1);
       }
-    } catch (err) {
+    } catch {
       setError("Connection error. Please check your backend.");
       setStep(1);
     } finally {

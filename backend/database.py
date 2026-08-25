@@ -13,6 +13,16 @@ def init_db(app):
     mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
     client = MongoClient(mongo_uri)
     db = client["Satya"]
+    
+    # Create required TTL indexes (Phase 2 validation)
+    try:
+        from pymongo import ASCENDING
+        db.email_otps.create_index([("expires_at", ASCENDING)], expireAfterSeconds=0)
+        db.eligibility_cache.create_index([("created_at", ASCENDING)], expireAfterSeconds=86400) # 24h
+        print("MongoDB Indexes Verified.")
+    except Exception as e:
+        print("MongoDB Index creation warning:", e)
+        
     print("MongoDB initialized.")
     print("MongoDB Connected Successfully")
 
