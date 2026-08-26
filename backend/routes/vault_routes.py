@@ -13,7 +13,7 @@ from database import get_db
 from vault.audit import AuditLogger
 from vault.document_manager import DocumentManager
 from vault.document_vault import DocumentVault
-from vault.identity_matcher import get_user_identity
+from vault.identity_matcher import get_user_identity, evaluate_identity_match, lock_identity_if_needed
 from vault.policy import RESET_COOLDOWN_HOURS
 from vault.security import SecurityManager
 from vault.verification_orchestrator import VerificationOrchestrator, sanitize_for_json
@@ -569,9 +569,22 @@ def confirm_review_with_otp():
     if verified_fields:
         update_fields["metadata"] = verified_fields
 
-    from bson import ObjectId as _OID
+    # Attempt identity lock if applicable, and evaluate match score
+    doc_type = doc.get("document_type", "Aadhaar Card")
+    db_user = db.users.find_one({"_id": ObjectId(user_id)})
+    if db_user and not db_user.get("identity_locked"):
+        lock_identity_if_needed(user_id, verified_fields, verification_context={"document_type": doc_type, "confidence": 100.0})
+    
+    # Calculate match to establish the relationship with the newly locked (or currently locked) identity
+    identity_ok, identity_score, needs_confirm, match_msg, updated_identity_profile = evaluate_identity_match(
+        user_id, doc_type, verified_fields
+    )
+    update_fields["identity_match_score"] = float(identity_score)
+    if isinstance(updated_identity_profile, dict):
+        update_fields["identity_match_breakdown"] = updated_identity_profile
+
     db.vault_documents.update_one(
-        {"_id": _OID(document_id), "user_id": str(user_id)},
+        {"_id": ObjectId(document_id), "user_id": str(user_id)},
         {"$set": update_fields}
     )
 
@@ -662,9 +675,39 @@ def confirm_review():
     if verified_fields:
         update_fields["metadata"] = verified_fields
 
-    from bson import ObjectId as _OID
+    # Build a matcher-compatible dict from the user-confirmed fields
+    matcher_data = {
+        "owner_name": verified_fields.get("owner_name") or verified_fields.get("full_name") or verified_fields.get("name", ""),
+        "name": verified_fields.get("owner_name") or verified_fields.get("full_name") or verified_fields.get("name", ""),
+        "dob": verified_fields.get("dob", ""),
+        "gender": verified_fields.get("gender", ""),
+    }
+
+    doc_type = doc.get("document_type", "Aadhaar Card")
+    db_user = db.users.find_one({"_id": ObjectId(user_id)})
+
+    # Reset a broken identity lock (empty fullName from a prior failed attempt)
+    if db_user and db_user.get("identity_locked"):
+        profile = db_user.get("identity_profile") or {}
+        locked_name = profile.get("fullName", "").strip()
+        if not locked_name:
+            db.users.update_one({"_id": ObjectId(user_id)}, {"$set": {"identity_locked": False}, "$unset": {"identity_profile": ""}})
+            db_user["identity_locked"] = False
+
+    # Attempt identity lock
+    if db_user and not db_user.get("identity_locked"):
+        lock_identity_if_needed(user_id, matcher_data, verification_context={"document_type": doc_type, "verification_method": "Aadhaar OCR + AI", "confidence": 100.0})
+
+    # Calculate match score against the (now locked) identity
+    identity_ok, identity_score, needs_confirm, match_msg, updated_identity_profile = evaluate_identity_match(
+        user_id, doc_type, matcher_data
+    )
+    update_fields["identity_match_score"] = float(identity_score)
+    if isinstance(updated_identity_profile, dict):
+        update_fields["identity_match_breakdown"] = updated_identity_profile
+
     db.vault_documents.update_one(
-        {"_id": _OID(document_id), "user_id": str(user_id)},
+        {"_id": ObjectId(document_id), "user_id": str(user_id)},
         {"$set": update_fields}
     )
 

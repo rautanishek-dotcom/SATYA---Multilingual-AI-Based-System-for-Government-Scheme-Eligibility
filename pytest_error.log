@@ -1,0 +1,25 @@
+Traceback (most recent call last):
+  File "<string>", line 12, in <module>
+  File "D:\MAJOR PROJECT(SATYA) (Final) (curr)\backend\vault\ocr_utils.py", line 994, in extract_structured_document_fields
+    new_result = extractor.extract(file_path, hint_text=hint_blob, qr_payload=qr_payload)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\MAJOR PROJECT(SATYA) (Final) (curr)\backend\vault\extractors\aadhaar.py", line 22, in extract
+    words = self._get_ocr_words(image_path)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\MAJOR PROJECT(SATYA) (Final) (curr)\backend\vault\extractors\base_extractor.py", line 36, in _get_ocr_words
+    result = OCREngine.extract(image_path, use_fallback=True)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\MAJOR PROJECT(SATYA) (Final) (curr)\backend\vault\ocr_engine.py", line 57, in extract
+    paddle = OCREngine.get_paddle_instance()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\MAJOR PROJECT(SATYA) (Final) (curr)\backend\vault\ocr_engine.py", line 38, in get_paddle_instance
+    _PADDLEOCR_INSTANCE = PaddleOCR(use_angle_cls=True, lang="en", use_gpu=False)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\anishek raut\AppData\Local\Programs\Python\Python312\Lib\site-packages\paddleocr\_pipelines\ocr.py", line 173, in __init__
+    super().__init__(**base_params)
+  File "C:\Users\anishek raut\AppData\Local\Programs\Python\Python312\Lib\site-packages\paddleocr\_pipelines\base.py", line 63, in __init__
+    self._common_args = parse_common_args(
+                        ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\anishek raut\AppData\Local\Programs\Python\Python312\Lib\site-packages\paddleocr\_common_args.py", line 54, in parse_common_args
+    raise ValueError(f"Unknown argument: {name}")
+ValueError: Unknown argument: use_gpu

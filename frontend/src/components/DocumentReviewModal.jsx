@@ -72,13 +72,13 @@ export default function DocumentReviewModal({ document, isOpen, onClose, onConfi
   let bannerTitle = 'Document Ready';
   let bannerMsg = 'Please review the extracted information below, then click Confirm & Save.';
 
-  if (confidence < 80) {
+  if (confidence < 75) {
     bannerIcon = <XCircle size={22} />;
     bannerColor = '#991b1b';
     bannerBg = '#fee2e2';
     bannerTitle = 'Low Confidence — Manual Review Required';
-    bannerMsg = 'OCR confidence is below 80%. Please verify all fields carefully. You may still save after correcting any errors.';
-  } else if (confidence < 95) {
+    bannerMsg = 'Verification confidence is below 75%. Please verify all fields carefully. You may still save after correcting any errors.';
+  } else if (confidence < 90) {
     bannerIcon = <AlertTriangle size={22} />;
     bannerColor = '#9a3412';
     bannerBg = '#ffedd5';
@@ -132,7 +132,7 @@ export default function DocumentReviewModal({ document, isOpen, onClose, onConfi
           <div>
             <div style={{ fontSize: 21, fontWeight: 900, color: '#0f172a' }}>Verify Document Information</div>
             <div style={{ color: '#64748b', fontSize: 13, marginTop: 2 }}>
-              Overall OCR Confidence: <strong>{confidence.toFixed(1)}%</strong>
+              Overall Verification Confidence: <strong>{confidence.toFixed(1)}%</strong>
               {' · '}
               {document.document_label || document.document_type || 'Document'}
             </div>

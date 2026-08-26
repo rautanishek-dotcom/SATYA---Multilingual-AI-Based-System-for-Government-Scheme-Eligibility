@@ -193,7 +193,7 @@ function LockRow({ icon: Icon, label, value }) {
 
 function DocumentCard({ doc, onDelete, onDownload, onPreview }) {
   const status = (doc.document_status || doc.verification_status || '').toUpperCase();
-  const matchScore = Math.round(doc.identity_match_score || 0);
+  const matchScoreDisplay = doc.identity_match_score != null ? `${Math.round(doc.identity_match_score)}%` : 'N/A';
   const confidence = Math.round(doc.confidence || 0);
   const risk = doc.document_summary?.risk || 'low';
   
@@ -202,7 +202,7 @@ function DocumentCard({ doc, onDelete, onDownload, onPreview }) {
   const isReview = status === 'AWAITING REVIEW' || status === 'AWAITING_REVIEW';
   
   const tone = isAccepted ? 'green' : isRejected ? 'red' : isReview ? 'amber' : 'slate';
-  const statusLabel = isAccepted ? 'Accepted' : isRejected ? 'Rejected' : isReview ? 'Awaiting Review' : status || 'Pending';
+  const statusLabel = isAccepted ? 'Verified' : isRejected ? 'Rejected' : isReview ? 'Awaiting Review' : status || 'Pending';
 
   return (
     <div
@@ -245,7 +245,7 @@ function DocumentCard({ doc, onDelete, onDownload, onPreview }) {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10, marginTop: 16 }}>
-        <MiniStat label="Match" value={`${matchScore}%`} />
+        <MiniStat label="Match" value={matchScoreDisplay} />
         <MiniStat label="Confidence" value={`${confidence}%`} />
         <MiniStat label="Quality" value={doc.quality_score ? `${Math.round(doc.quality_score)}%` : 'n/a'} />
       </div>

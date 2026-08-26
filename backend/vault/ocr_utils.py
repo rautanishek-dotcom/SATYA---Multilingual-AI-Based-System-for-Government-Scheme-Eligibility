@@ -553,6 +553,33 @@ def _extract_name_from_text_block(text, user_name=None):
         if candidate:
             return _field(candidate, 90.0, "positional")
 
+    # Inline heuristic: name appears immediately before a date (YYYY-MM-DD or DD/MM/YYYY) on the SAME line
+    # This handles OCR that flattens the entire document into one line with single spaces
+    inline_match = re.search(
+        r'(.*?)(?:\b(?:dob|date of birth|gender|male|female)\b|\b\d{2,4}[/\-]\d{2}[/\-]\d{2,4}\b)',
+        text, re.IGNORECASE
+    )
+    if inline_match:
+        preceding = inline_match.group(1).strip()
+        if preceding:
+            # Walk backwards from the DOB to find the best name candidate
+            inline_words = preceding.split()
+            forbidden_tokens = {'government', 'india', 'unique', 'identification', 'authority',
+                                'aadhaar', 'uidai', 'address', 'phone', 'pan', 'qr', 'vid',
+                                'dob', 'gender', 'male', 'female'}
+            for w_count in range(min(5, len(inline_words)), 0, -1):
+                cand = ' '.join(inline_words[-w_count:])
+                cand_clean = cand.strip(' ,;:-|')
+                cand_lower = cand_clean.lower()
+                # Validate: must be alphabetic, not forbidden, not too short
+                if (len(cand_clean) >= 3
+                    and not re.search(r'\d', cand_clean)
+                    and not any(t in forbidden_tokens for t in cand_lower.split())
+                    and not any(f in cand_lower for f in forbidden_tokens if len(f) > 3)):
+                    candidate = VaultUtils.canonicalize_name(cand_clean)
+                    if candidate:
+                        return _field(candidate, 88.0, "inline_before_dob")
+
     for line in lines:
         line_l = line.lower()
         if any(keyword in line_l for keyword in ["uidai", "government", "india", "aadhaar", "address", "dob", "gender", "qr", "pincode", "certificate", "passport", "license"]):
@@ -989,7 +1016,22 @@ def extract_structured_document_fields(file_path, document_type=None, user_name=
 
     hint_blob = " ".join(part for part in [hint_text, qr_payload] if part)
     if document_type == "aadhaar_ocr" or _is_aadhaar_hint(hint_blob):
+        # Legacy Aadhaar extraction (always runs — this is the stable baseline)
         aadhaar_result = _extract_aadhaar_structured_fields(image, user_name=user_name, qr_payload=qr_payload, hint_text=hint_blob)
+        
+        # Region-based extractor enhancement (optional, wrapped in try/except)
+        try:
+            from vault.extractors.aadhaar import AadhaarExtractor
+            extractor = AadhaarExtractor(debug_mode=True)
+            new_result = extractor.extract(file_path, hint_text=hint_blob, qr_payload=qr_payload)
+            # Only override name if the region extractor found one and the legacy didn't
+            if new_result and new_result.get("fields", {}).get("name", {}).get("value"):
+                legacy_name = aadhaar_result.get("fields", {}).get("name", {}).get("value", "")
+                if not legacy_name:
+                    aadhaar_result["fields"]["name"] = new_result["fields"]["name"]
+        except Exception as extractor_err:
+            logger.warning("[AadhaarExtractor] Region extractor failed (non-fatal): %s", extractor_err)
+            
         aadhaar_result["fields"]["document_type"] = _field("Aadhaar Card", 99.0, "classifier")
         return aadhaar_result
 

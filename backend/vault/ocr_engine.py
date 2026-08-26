@@ -34,8 +34,8 @@ class OCREngine:
             logger.info("Initializing PaddleOCR Singleton (This should only happen once)")
             import logging as _logging
             _logging.getLogger("ppocr").setLevel(_logging.ERROR)
-            # Use use_angle_cls=True but disable tensorrt/gpu for local compat
-            _PADDLEOCR_INSTANCE = PaddleOCR(use_angle_cls=True, lang="en", use_gpu=False, show_log=False, use_tensorrt=False)
+            # Use use_angle_cls=True but disable gpu for local compat
+            _PADDLEOCR_INSTANCE = PaddleOCR(use_angle_cls=True, lang="en")
         return _PADDLEOCR_INSTANCE
 
     @staticmethod

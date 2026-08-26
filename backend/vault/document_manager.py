@@ -431,6 +431,18 @@ class DocumentManager:
                 if isinstance(field_val, dict) and field_val.get("value"):
                     field_confidence[field_key] = round(float(field_val.get("confidence", 0.0)), 1)
 
+            # ── Calculate VERIFICATION confidence from identity fields only ──────
+            name_conf = field_confidence.get("name", 0.0)
+            dob_conf = field_confidence.get("dob", 0.0)
+            gender_conf = field_confidence.get("gender", 0.0)
+            # Weighted: name 40%, dob 35%, gender 25%
+            verification_confidence = round(
+                name_conf * 0.40 + dob_conf * 0.35 + gender_conf * 0.25, 2
+            )
+            # Map to frontend-friendly keys
+            field_confidence["owner_name"] = name_conf
+            field_confidence["verification"] = verification_confidence
+
             # ── Build ocr_data (immutable) ───────────────────────────────────────
             ocr_data = {
                 # Name: Aadhaar stores as "name", generic/PAN also "name"
@@ -502,17 +514,17 @@ class DocumentManager:
 
             # ── Determine initial document_status ────────────────────────────────
             from vault.verification_status import DocumentStatus, ConfidenceTier
-            document_status = DocumentStatus.AWAITING_REVIEW
-            confidence_tier = ConfidenceTier.from_score(ocr_confidence)
+            # Use VERIFICATION confidence (from identity fields), NOT raw OCR confidence
+            confidence_tier = ConfidenceTier.from_score(verification_confidence)
 
-            # ── Stage 12.5: Extraction Validation ────────────────────────────────
-            # We must not auto-accept merely because OCR completed. 
-            if document_type == "aadhaar_ocr" and not ocr_data.get("document_number"):
-                confidence_tier = ConfidenceTier.POOR
-                document_status = getattr(DocumentStatus, "NEEDS_REVIEW", "needs_review")
-            elif document_type == "pan" and not ocr_data.get("document_number"):
-                # If PAN regex failed, the identity_number won't be set
-                document_status = getattr(DocumentStatus, "NEEDS_REVIEW", "needs_review")
+            if verification_confidence >= 90:
+                document_status = DocumentStatus.ACCEPTED
+            elif verification_confidence >= 75:
+                document_status = DocumentStatus.AWAITING_REVIEW
+            else:
+                document_status = DocumentStatus.AWAITING_REVIEW
+
+            quality_data = QualityDetector.analyze(primary_path)
 
             # ── Build the full MongoDB record ────────────────────────────────────
             now = datetime.datetime.utcnow()
@@ -544,17 +556,20 @@ class DocumentManager:
                 "verified_data": verified_data,
                 "metadata": ocr_data,  # Legacy compat
 
-                # Confidence
-                "confidence": round(ocr_confidence, 2),
+                # Confidence — use VERIFICATION confidence, not raw OCR
+                "confidence": round(verification_confidence, 2),
+                "raw_ocr_confidence": round(ocr_confidence, 2),
                 "confidence_tier": confidence_tier,
                 "field_confidence": field_confidence,
+                "identity_match_score": None,  # null when no reference data available
 
                 # Processing metrics
                 "processing_time": round(time.time() - upload_start, 3),
                 "stage_timings": timings,
 
                 # Supplementary
-                "quality": QualityDetector.analyze(primary_path),
+                "quality": quality_data,
+                "quality_score": quality_data.get("quality_score", 0.0),
                 "qr": qr_result,
                 "classification": classification,
                 "search_index": self._build_search_index({

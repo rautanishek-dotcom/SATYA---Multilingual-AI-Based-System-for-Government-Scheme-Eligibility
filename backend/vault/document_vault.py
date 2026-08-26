@@ -59,6 +59,7 @@ class DocumentVault:
 
             # Supplementary
             "quality": VaultUtils.to_serializable(record.get("quality", {})),
+            "quality_score": float(record.get("quality_score", 0) or 0),
             "qr": VaultUtils.to_serializable(record.get("qr", {})),
             "classification": VaultUtils.to_serializable(record.get("classification", {})),
             "search_index": record.get("search_index", ""),

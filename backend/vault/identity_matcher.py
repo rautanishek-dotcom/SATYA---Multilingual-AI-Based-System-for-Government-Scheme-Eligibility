@@ -89,6 +89,12 @@ def get_user_identity(user_id):
     return user, _identity_profile_view(user)
 
 
+def _get_name_from_data(extracted_data):
+    if not isinstance(extracted_data, dict):
+        return ""
+    return _field_value(extracted_data.get("owner_name") or extracted_data.get("full_name") or extracted_data.get("name") or "")
+
+
 def build_identity_lock(user_id, extracted_data, verification_context=None):
     verification_context = verification_context or {}
     document_type = verification_context.get("document_type", "")
@@ -96,7 +102,7 @@ def build_identity_lock(user_id, extracted_data, verification_context=None):
     confidence = verification_context.get("confidence", 0.0)
     return {
         "userId": str(user_id),
-        "fullName": VaultUtils.canonicalize_name(_field_value(extracted_data.get("name", ""))),
+        "fullName": VaultUtils.canonicalize_name(_get_name_from_data(extracted_data)),
         "dob": VaultUtils.normalize_date(_field_value(extracted_data.get("dob", ""))),
         "gender": VaultUtils.normalize_gender(_field_value(extracted_data.get("gender", ""))),
         "maskedAadhaar": VaultUtils.mask_aadhaar(_field_value(extracted_data.get("masked_aadhaar", ""))),
@@ -122,7 +128,7 @@ def lock_identity_if_needed(user_id, extracted_data, verification_context=None):
     if user.get("identity_locked"):
         return False, _identity_profile_view(user), "Identity already locked"
 
-    full_name = VaultUtils.canonicalize_name(_field_value(extracted_data.get("name", "")))
+    full_name = VaultUtils.canonicalize_name(_get_name_from_data(extracted_data))
     dob = VaultUtils.normalize_date(_field_value(extracted_data.get("dob", "")))
     if not full_name or not dob:
         return False, None, "Aadhaar verification failed. Full name and DOB are required."
@@ -190,34 +196,23 @@ def _family_member_match(user, identity_profile, extracted_data):
 
 
 def _weighted_identity_score(identity_profile, extracted_data):
-    name_score = calculate_name_similarity(_field_value(identity_profile.get("fullName", "")), _field_value(extracted_data.get("name", "")))
+    name_score = calculate_name_similarity(_field_value(identity_profile.get("fullName", "")), _get_name_from_data(extracted_data))
     dob_score = 100.0 if VaultUtils.normalize_date(_field_value(identity_profile.get("dob", ""))) == VaultUtils.normalize_date(_field_value(extracted_data.get("dob", ""))) else 0.0
 
     profile_gender = VaultUtils.normalize_gender(_field_value(identity_profile.get("gender", "")))
     doc_gender = VaultUtils.normalize_gender(_field_value(extracted_data.get("gender", "")))
     gender_score = 100.0 if profile_gender and doc_gender and profile_gender == doc_gender else 0.0
 
-    profile_ref = str(_field_value(identity_profile.get("aadhaarReferenceId", ""))).strip()
-    doc_ref = str(_field_value(extracted_data.get("aadhaar_reference_id") or extracted_data.get("reference_id") or "")).strip()
-    id_number_score = 100.0 if profile_ref and doc_ref and profile_ref == doc_ref else (70.0 if profile_ref and doc_ref and profile_ref[-4:] == doc_ref[-4:] else 0.0)
-
-    profile_addr = _field_value(identity_profile.get("address", "") or identity_profile.get("fullAddress", ""))
-    doc_addr = _field_value(extracted_data.get("address", ""))
-    address_score = _score_address(profile_addr, doc_addr) if profile_addr and doc_addr else 0.0
-
+    # Only use name, dob, gender — aadhaar_number and address are excluded
     overall = (
-        (name_score * 0.40)
+        (name_score * 0.50)
         + (dob_score * 0.30)
-        + (gender_score * 0.15)
-        + (id_number_score * 0.10)
-        + (address_score * 0.05)
+        + (gender_score * 0.20)
     )
     return round(overall, 2), {
         "name": round(name_score, 2),
         "dob": round(dob_score, 2),
         "gender": round(gender_score, 2),
-        "identity_number": round(id_number_score, 2),
-        "address": round(address_score, 2),
     }
 
 
@@ -233,15 +228,17 @@ def evaluate_identity_match(user_id, document_type, extracted_data):
     identity_locked = bool(user.get("identity_locked", False))
     identity_profile = _identity_profile_view(user)
 
+    doc_type_clean = (document_type or "").lower().replace(" ", "_")
+
     if not identity_locked:
-        if document_type not in {"aadhaar_ekyc", "aadhaar_ocr"}:
+        if doc_type_clean not in {"aadhaar_ekyc", "aadhaar_ocr", "aadhaar_card", "aadhaar"}:
             return False, 0.0, False, "Identity Lock required. Please verify Aadhaar first.", identity_profile
         locked, lock_profile, message = lock_identity_if_needed(
             user_id,
             extracted_data,
             verification_context={
-                "document_type": "Aadhaar Card" if document_type == "aadhaar_ocr" else "Aadhaar Offline e-KYC",
-                "verification_method": "Offline eKYC + AI OCR" if document_type == "aadhaar_ekyc" else "Aadhaar OCR + AI",
+                "document_type": "Aadhaar Card" if "ocr" in doc_type_clean or "card" in doc_type_clean or doc_type_clean == "aadhaar" else "Aadhaar Offline e-KYC",
+                "verification_method": "Offline eKYC + AI OCR" if doc_type_clean == "aadhaar_ekyc" else "Aadhaar OCR + AI",
                 "confidence": 98.0,
             },
         )
