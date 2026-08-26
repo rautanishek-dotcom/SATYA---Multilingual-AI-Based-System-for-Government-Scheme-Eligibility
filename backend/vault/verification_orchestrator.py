@@ -773,6 +773,12 @@ class VerificationOrchestrator:
             updated_identity_profile = lock_profile
 
         summary = VaultUtils.document_summary(document_type, extracted_data, quality_result, fraud_result, identity_score)
+        verification_score = VaultUtils.verification_score(
+            document_confidence,
+            quality_result.get("quality_score", 0),
+            identity_score,
+            identity_locked=identity_locked,
+        )
         search_index = _build_search_index(document_type, extracted_data)
 
         verification_logs = [
@@ -797,6 +803,7 @@ class VerificationOrchestrator:
             "confidence": document_confidence,
             "quality_score": quality_result.get("quality_score", 0),
             "identity_match_score": round(identity_score, 2),
+            "verification_score": verification_score,
             "identity_match_breakdown": updated_identity_profile if isinstance(updated_identity_profile, dict) else {},
             "fraud_probability": fraud_result["fraud_probability"],
             "fraud_findings": fraud_result["findings"],
@@ -830,6 +837,7 @@ class VerificationOrchestrator:
                 "document_id": doc_id,
                 "document_type": document_type,
                 "identity_match_score": round(identity_score, 2),
+                "verification_score": verification_score,
             })
             return {
                 "status": final_status,
@@ -840,6 +848,7 @@ class VerificationOrchestrator:
                 "quality": quality_result,
                 "ocr": ocr_candidates,
                 "identityMatchScore": round(identity_score, 2),
+                "verificationScore": verification_score,
             }
         except Exception as e:
             return sanitize_for_json({"status": VerificationStatus.FAILED, "error": f"Database error: {e}"})

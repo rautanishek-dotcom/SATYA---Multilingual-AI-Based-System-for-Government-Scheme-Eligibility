@@ -12,8 +12,15 @@ from routes.eligibility_routes import eligibility_bp
 from routes.otp_routes import otp_bp
 from services.email_service import init_mail
 
+import os
 app = Flask(__name__)
-CORS(app)
+# Add session secret key and cookie settings
+app.secret_key = os.getenv("SECRET_KEY", "super-secret-satya-session-key")
+app.config.update(
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=False, # True if HTTPS
+)
+CORS(app, supports_credentials=True)
 
 # Initialize Database
 try:

@@ -32,6 +32,11 @@ export default function DocumentReviewModal({ document, isOpen, onClose, onConfi
 
   const fieldConfidence = document?.field_confidence || {};
   const confidence = parseFloat(document?.confidence || 0);
+  const rawVerificationScore = parseFloat(document?.verification_score ?? document?.confidence ?? 0);
+  const hasIdentitySignal = parseFloat(document?.identity_match_score ?? 0) > 0 || Boolean(document?.identity_locked);
+  const verificationScore = !hasIdentitySignal && confidence > rawVerificationScore
+    ? confidence
+    : rawVerificationScore;
 
   // Re-init form if document changes (new upload opens modal)
   React.useEffect(() => {
@@ -132,7 +137,7 @@ export default function DocumentReviewModal({ document, isOpen, onClose, onConfi
           <div>
             <div style={{ fontSize: 21, fontWeight: 900, color: '#0f172a' }}>Verify Document Information</div>
             <div style={{ color: '#64748b', fontSize: 13, marginTop: 2 }}>
-              Overall Verification Confidence: <strong>{confidence.toFixed(1)}%</strong>
+              Overall Verification Confidence: <strong>{verificationScore.toFixed(1)}%</strong>
               {' · '}
               {document.document_label || document.document_type || 'Document'}
             </div>

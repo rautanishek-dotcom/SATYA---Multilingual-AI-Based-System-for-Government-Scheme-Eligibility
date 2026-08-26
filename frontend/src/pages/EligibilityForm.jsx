@@ -191,8 +191,34 @@ const EligibilityForm = () => {
   const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, totalSteps));
   const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
 
+  const fetchOtpStatus = async () => {
+    const token = localStorage.getItem('satya_token');
+    const res = await fetch('http://localhost:5000/api/otp/status?purpose=eligibility_check', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || 'Could not check OTP status.');
+    }
+    return data;
+  };
+
   const handleSendOTP = async () => {
     try {
+      const status = await fetchOtpStatus();
+      if (status.verified) {
+        setIsMobileVerified(true);
+        setShowOTPModal(false);
+        return;
+      }
+
+      if (status.active && !status.verified) {
+        setShowOTPModal(true);
+        return;
+      }
+
       const token = localStorage.getItem('satya_token');
       const res = await fetch('http://localhost:5000/api/otp/send', {
         method: 'POST',
@@ -230,8 +256,22 @@ const EligibilityForm = () => {
     // In our new flow, they click "Check Eligibility", we send OTP, show modal, 
     // then on success, we call handleSubmit again with otpCode.
     if (!isAutoRefresh && !otpCode) {
-        handleSendOTP();
-        return;
+      try {
+        const status = await fetchOtpStatus();
+        if (status.verified) {
+          setIsMobileVerified(true);
+          return handleSubmit(null, true, null);
+        }
+        if (status.active && !status.verified) {
+          setShowOTPModal(true);
+          return;
+        }
+      } catch {
+        // Fall back to generating a fresh OTP below.
+      }
+
+      handleSendOTP();
+      return;
     }
     
     if (!isAutoRefresh) setLoading(true);
@@ -461,9 +501,9 @@ const EligibilityForm = () => {
             </div>
             <div style={styles.row}>
                 <div style={styles.inputGroup}>
-                    <label>{t('MobileNumber')}*</label>
+                    <label>{t('EmailAddress', 'Email Address')}*</label>
                     <div style={styles.inputWithBtn}>
-                        <input type="tel" name="mobile" value={formData.mobile} onChange={handleChange} style={styles.input} placeholder={t('MobilePlaceholder')} />
+                        <input type="email" name="mobile" value={formData.mobile} onChange={handleChange} style={styles.input} placeholder={t('EmailPlaceholder', 'Enter your email')} />
                         <button 
                           type="button" 
                           onClick={handleSendOTP} 

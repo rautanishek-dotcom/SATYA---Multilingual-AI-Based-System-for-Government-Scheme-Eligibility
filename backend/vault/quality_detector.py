@@ -7,9 +7,9 @@ from typing import Dict, Any
 logger = logging.getLogger(__name__)
 
 class QualityDetector:
-    MIN_WIDTH = 600
-    MIN_HEIGHT = 400
-    BLUR_THRESHOLD = 100.0
+    MIN_WIDTH = 500
+    MIN_HEIGHT = 350
+    BLUR_THRESHOLD = 90.0
 
     @staticmethod
     def analyze(image_path: str) -> Dict[str, Any]:
@@ -50,31 +50,31 @@ class QualityDetector:
         result["metrics"]["resolution"] = f"{w}x{h}"
         if w < QualityDetector.MIN_WIDTH or h < QualityDetector.MIN_HEIGHT:
             result["issues"].append("Low resolution")
-            result["quality_score"] -= 20
+            result["quality_score"] -= 10
 
         # 2. Blur (Variance of Laplacian)
         blur_score = cv2.Laplacian(gray, cv2.CV_64F).var()
         result["metrics"]["blur"] = round(blur_score, 2)
         if blur_score < QualityDetector.BLUR_THRESHOLD:
             result["issues"].append("Image is blurry")
-            result["quality_score"] -= min(30, (QualityDetector.BLUR_THRESHOLD - blur_score) / 2)
+            result["quality_score"] -= min(25, (QualityDetector.BLUR_THRESHOLD - blur_score) / 3)
 
         # 3. Brightness
         brightness = np.mean(gray)
         result["metrics"]["brightness"] = round(brightness, 2)
         if brightness < 50:
             result["issues"].append("Underexposed (Too dark)")
-            result["quality_score"] -= 15
+            result["quality_score"] -= 12
         elif brightness > 220:
             result["issues"].append("Overexposed (Too bright)")
-            result["quality_score"] -= 15
+            result["quality_score"] -= 12
 
         # 4. Contrast
         contrast = gray.std()
         result["metrics"]["contrast"] = round(contrast, 2)
         if contrast < 20:
             result["issues"].append("Low contrast")
-            result["quality_score"] -= 15
+            result["quality_score"] -= 10
 
         # 5. Skew Angle Estimation
         thresh = cv2.threshold(cv2.bitwise_not(gray), 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
@@ -88,7 +88,7 @@ class QualityDetector:
             result["metrics"]["skew_angle"] = round(angle, 2)
             if abs(angle) > 5.0:
                 result["issues"].append(f"High skew detected ({angle:.2f} deg)")
-                result["quality_score"] -= 10
+                result["quality_score"] -= 8
         else:
             result["metrics"]["skew_angle"] = 0.0
 

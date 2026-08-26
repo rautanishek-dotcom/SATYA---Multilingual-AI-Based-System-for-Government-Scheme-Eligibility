@@ -47,13 +47,14 @@ const normalizeIdentityProfile = (profile = {}) => ({
   gender: displayValue(profile.gender || ''),
   masked_aadhaar: displayValue(profile.masked_aadhaar || profile.maskedAadhaar || ''),
   aadhaar_reference_id: displayValue(profile.aadhaar_reference_id || profile.aadhaarReferenceId || ''),
-  identity_locked: Boolean(profile.identity_locked ?? profile.identityLocked),
+  identityLocked: Boolean(profile.identity_locked ?? profile.identityLocked),
   verification_status: displayValue(profile.verification_status || profile.verificationStatus || (profile.identity_locked || profile.identityLocked ? 'Verified' : '')),
   confidence: Number(profile.confidence ?? 0) || 0,
   verified_at: displayValue(profile.verified_at || profile.verifiedAt || ''),
   document_type: displayValue(profile.document_type || profile.documentType || ''),
   verification_method: displayValue(profile.verification_method || profile.verificationMethod || ''),
   last_reset_at: displayValue(profile.last_reset_at || profile.lastResetAt || ''),
+  resetAvailable: profile.resetAvailable,
 });
 
 const summarizeLogResult = (step, result) => {
@@ -115,7 +116,7 @@ const apiFetch = async (path, options = {}) => {
   const token = localStorage.getItem('satya_token');
   const headers = { ...(options.headers || {}) };
   if (token) headers.Authorization = `Bearer ${token}`;
-  return fetch(`${API_BASE}${path}`, { ...options, headers });
+  return fetch(`${API_BASE}${path}`, { ...options, headers, credentials: 'include' });
 };
 
 function Badge({ children, tone = 'slate' }) {
@@ -193,8 +194,15 @@ function LockRow({ icon: Icon, label, value }) {
 
 function DocumentCard({ doc, onDelete, onDownload, onPreview }) {
   const status = (doc.document_status || doc.verification_status || '').toUpperCase();
-  const matchScoreDisplay = doc.identity_match_score != null ? `${Math.round(doc.identity_match_score)}%` : 'N/A';
   const confidence = Math.round(doc.confidence || 0);
+  const qualityScore = Math.round(doc.quality_score || 0);
+  const identityMatchScore = Math.round(Number(doc.identity_match_score ?? 0) || 0);
+  // Use the actual verification signals: prefer confidence as the primary score
+  // since it is the real OCR/verification pipeline result.
+  // Only blend in identity match if it exists, otherwise show the confidence directly.
+  const verificationScore = identityMatchScore > 0
+    ? Math.round((confidence * 0.45 + qualityScore * 0.25 + identityMatchScore * 0.30) / 1.0)
+    : confidence;
   const risk = doc.document_summary?.risk || 'low';
   
   const isAccepted = status === 'ACCEPTED';
@@ -240,12 +248,11 @@ function DocumentCard({ doc, onDelete, onDownload, onPreview }) {
           fontSize: 16,
           background: 'linear-gradient(135deg, rgba(14,165,233,0.08), rgba(16,185,129,0.08))',
         }}>
-          {confidence}%
+          {verificationScore}%
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10, marginTop: 16 }}>
-        <MiniStat label="Match" value={matchScoreDisplay} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10, marginTop: 16 }}>
         <MiniStat label="Confidence" value={`${confidence}%`} />
         <MiniStat label="Quality" value={doc.quality_score ? `${Math.round(doc.quality_score)}%` : 'n/a'} />
       </div>
@@ -362,7 +369,6 @@ function IdentityLockCard({ identity, resetAvailable, onReset }) {
           {locked ? (
             <div style={{ display: 'grid', gap: 8, color: '#0f172a' }}>
               <LockRow icon={UserRound} label="Full Name" value={displayValue(identity?.full_name)} />
-              <LockRow icon={Fingerprint} label="Masked Aadhaar" value={displayValue(identity?.masked_aadhaar)} />
               <LockRow icon={CalendarDays} label="Date of Birth" value={displayValue(identity?.dob)} />
               <LockRow icon={VenetianMask} label="Gender" value={displayValue(identity?.gender)} />
               <LockRow icon={Shield} label="Verification Status" value={statusLabel} />
@@ -389,14 +395,14 @@ function IdentityLockCard({ identity, resetAvailable, onReset }) {
           </Badge>
           <button
             type="button"
-            disabled={!locked || !resetAvailable}
+            disabled={!locked}
             onClick={onReset}
             style={{
               border: 'none',
               borderRadius: 14,
               padding: '12px 16px',
-              cursor: !locked || !resetAvailable ? 'not-allowed' : 'pointer',
-              background: !locked || !resetAvailable ? '#cbd5e1' : '#0f172a',
+              cursor: !locked ? 'not-allowed' : 'pointer',
+              background: !locked ? '#cbd5e1' : '#0f172a',
               color: '#fff',
               fontWeight: 800,
               display: 'inline-flex',
@@ -441,7 +447,7 @@ export default function DocumentVault() {
   const navigate = useNavigate();
 
   const [documents, setDocuments] = useState([]);
-  const [identity, setIdentity] = useState({ identityLocked: false });
+  const [identity, setIdentity] = useState({ identityLocked: false, resetAvailable: true });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -451,6 +457,11 @@ export default function DocumentVault() {
   const [pendingUpload, setPendingUpload] = useState(null);
   const [confirmation, setConfirmation] = useState(null);
   const [reviewDoc, setReviewDoc] = useState(null); // New state for review modal
+  const [vaultUnlocked, setVaultUnlocked] = useState(false);
+  const [vaultVerificationStatus, setVaultVerificationStatus] = useState('checking');
+  const [otpBooting, setOtpBooting] = useState(true);
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpBanner, setOtpBanner] = useState('');
   
   // OTP State for document review confirmation
   const [showOTPModal, setShowOTPModal] = useState(false);
@@ -461,65 +472,205 @@ export default function DocumentVault() {
   const [resetPassword, setResetPassword] = useState('');
   const [resetBusy, setResetBusy] = useState(false);
 
-  const fetchIdentity = useCallback(async () => {
+  const fetchOtpStatus = useCallback(async () => {
+    const token = localStorage.getItem('satya_token');
+    const res = await fetch('http://localhost:5000/api/otp/status?purpose=document_verification', {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: 'include',
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || 'Could not check vault verification status.');
+    }
+    return data;
+  }, []);
+
+  const requestVaultOtp = useCallback(async () => {
+    if (!userId) return false;
+    setOtpSending(true);
+    setError(null);
+    try {
+      const status = await fetchOtpStatus();
+      if (status.verified) {
+        setVaultUnlocked(true);
+        setVaultVerificationStatus('verified');
+        setShowOTPModal(false);
+        setOtpBanner('Vault verification already completed for this session.');
+        return true;
+      }
+
+      if (status.active && !status.verified) {
+        setShowOTPModal(true);
+        setOtpBanner('A verification code is already active for this session.');
+        return true;
+      }
+
+      const token = localStorage.getItem('satya_token');
+      const res = await fetch('http://localhost:5000/api/otp/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ purpose: 'document_verification' }),
+        credentials: 'include',
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok) {
+        setShowOTPModal(true);
+        setOtpBanner(data.message || `OTP sent to ${data.masked_email || 'your registered email'}.`);
+        return true;
+      }
+
+      if (data.already_verified) {
+        setVaultUnlocked(true);
+        setVaultVerificationStatus('verified');
+        setShowOTPModal(false);
+        setOtpBanner(data.message || 'Vault verification already completed for this session.');
+        return true;
+      }
+
+      if (data.already_pending) {
+        setShowOTPModal(true);
+        setOtpBanner(data.message || 'A verification code is already active for this session.');
+        return true;
+      }
+
+      throw new Error(data.error || 'Could not send OTP.');
+    } finally {
+      setOtpSending(false);
+      setOtpBooting(false);
+    }
+  }, [fetchOtpStatus, userId]);
+
+  const fetchIdentity = useCallback(async (force = false) => {
     if (!userId) return;
-    const res = await apiFetch(`/identity?user_id=${encodeURIComponent(userId)}`);
-    const data = await res.json();
-    if (res.ok) {
-      setIdentity(normalizeIdentityProfile({
-        ...(data.identityProfile || {}),
-        identityLocked: data.identityLocked,
-        resetAvailable: data.resetAvailable,
-        lastResetAt: data.lastResetAt,
-        nextResetAllowedAt: data.nextResetAllowedAt,
-      }));
+    try {
+      const res = await apiFetch(`/identity?user_id=${encodeURIComponent(userId)}`);
+      const data = await res.json();
+      if (res.ok) {
+        setIdentity(normalizeIdentityProfile({
+          ...(data.identityProfile || {}),
+          identity_locked: data.identityLocked,
+          identityLocked: data.identityLocked,
+          resetAvailable: data.resetAvailable,
+          lastResetAt: data.lastResetAt,
+          nextResetAllowedAt: data.nextResetAllowedAt,
+        }));
+      }
+    } catch (err) {
+      // Silently fail on identity fetch errors
     }
   }, [userId]);
 
-  const fetchVault = useCallback(async (search = '') => {
-    if (!userId) return;
+  const fetchVault = useCallback(async (search = '', force = false) => {
+    if (!userId || (!vaultUnlocked && !force)) return;
     setLoading(true);
-    const path = search ? `/search?user_id=${encodeURIComponent(userId)}&q=${encodeURIComponent(search)}` : `/?user_id=${encodeURIComponent(userId)}`;
-    const res = await apiFetch(path);
-    const data = await res.json();
-    if (res.ok) {
-      setDocuments(data.documents || []);
-      if (data.identity_profile || data.identity_locked !== undefined) {
-        setIdentity((prev) => normalizeIdentityProfile({
-          ...prev,
-          ...(data.identity_profile || {}),
-          identityLocked: data.identity_locked ?? prev.identityLocked,
-        }));
+    try {
+      const path = search ? `/search?user_id=${encodeURIComponent(userId)}&q=${encodeURIComponent(search)}` : `/?user_id=${encodeURIComponent(userId)}`;
+      const res = await apiFetch(path);
+      const data = await res.json();
+      if (res.ok) {
+        setDocuments(data.documents || []);
+        if (data.identity_profile || data.identity_locked !== undefined) {
+          setIdentity((prev) => normalizeIdentityProfile({
+            ...prev,
+            ...(data.identity_profile || {}),
+            identity_locked: data.identity_locked ?? prev.identityLocked,
+            identityLocked: data.identity_locked ?? prev.identityLocked,
+          }));
+        }
+      } else {
+        setError({ title: 'Vault load failed', message: data.error || 'Could not load your vault.' });
       }
-    } else {
-      setError({ title: 'Vault load failed', message: data.error || 'Could not load your vault.' });
+    } catch (err) {
+      setError({ title: 'Vault load failed', message: 'Could not reach the server.' });
     }
     setLoading(false);
-  }, [userId]);
+  }, [userId, vaultUnlocked]);
+
+  const handleVaultOTPVerified = useCallback(async (otpCode) => {
+    if (!userId) return;
+    setOtpSending(true);
+    setError(null);
+    try {
+      const token = localStorage.getItem('satya_token');
+      const res = await fetch('http://localhost:5000/api/otp/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ purpose: 'document_verification', otp_code: otpCode }),
+        credentials: 'include',
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || !data.verified) {
+        throw new Error(data.error || 'OTP verification failed.');
+      }
+
+      setVaultUnlocked(true);
+      setVaultVerificationStatus('verified');
+      setShowOTPModal(false);
+      setOtpBanner('Vault unlocked successfully.');
+      await Promise.all([fetchIdentity(true), fetchVault('', true)]);
+    } catch (err) {
+      setError({ title: 'OTP verification failed', message: err.message || 'Could not verify OTP.' });
+      throw err;
+    } finally {
+      setOtpSending(false);
+    }
+  }, [fetchIdentity, fetchVault, userId]);
 
   useEffect(() => {
     let active = true;
     const boot = async () => {
       if (!userId) {
         setLoading(false);
+        setOtpBooting(false);
         return;
       }
-      await Promise.all([fetchIdentity(), fetchVault()]);
+      try {
+        await fetchIdentity(true);
+        const status = await fetchOtpStatus();
+        if (!active) return;
+        if (status.verified) {
+          setVaultUnlocked(true);
+          setVaultVerificationStatus('verified');
+          await Promise.all([fetchIdentity(true), fetchVault('', true)]);
+        } else {
+          setVaultUnlocked(false);
+          setVaultVerificationStatus('required');
+          await requestVaultOtp();
+        }
+      } catch (err) {
+        if (active) {
+          setVaultVerificationStatus('required');
+          setError({ title: 'OTP required', message: err.message || 'Could not verify vault access.' });
+        }
+      } finally {
+        if (active) {
+          setOtpBooting(false);
+          if (!vaultUnlocked) setLoading(false);
+        }
+      }
       if (!active) return;
     };
     boot();
     return () => {
       active = false;
     };
-  }, [userId, fetchIdentity, fetchVault]);
+  }, [userId, fetchIdentity, fetchVault, fetchOtpStatus, requestVaultOtp, vaultUnlocked]);
 
   useEffect(() => {
-    if (!userId) return undefined;
+    if (!userId || !vaultUnlocked) return undefined;
     const timer = setTimeout(() => {
       fetchVault(deferredQuery.trim());
     }, 300);
     return () => clearTimeout(timer);
-  }, [deferredQuery, userId, fetchVault]);
+  }, [deferredQuery, userId, vaultUnlocked, fetchVault]);
 
   const handleUpload = async (file, confirm_match = false) => {
     if (!file || uploading) return;
@@ -603,27 +754,44 @@ export default function DocumentVault() {
 
   const handleReviewConfirm = async (verifiedData, corrections) => {
     if (!reviewDoc) return;
-    
+
     try {
+      const reviewDocumentId = reviewDoc.document_id || reviewDoc.document?._id || reviewDoc.document?._id?.$oid || reviewDoc.document?.id;
       const res = await apiFetch('/confirm_review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: userId,
-          document_id: reviewDoc.document_id,
+          document_id: reviewDocumentId,
           verified_data: verifiedData,
           corrections: corrections,
         }),
       });
-      const data = await res.json();
+      const raw = await res.text();
+      let data = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        data = { error: raw || 'Could not save review.' };
+      }
       if (res.ok) {
+        // Update identity state immediately from the confirm_review response
+        if (data.identity_profile || data.identity_locked !== undefined) {
+          setIdentity((prev) => normalizeIdentityProfile({
+            ...prev,
+            ...(data.identity_profile || {}),
+            identity_locked: data.identity_locked ?? prev.identityLocked,
+            identityLocked: data.identity_locked ?? prev.identityLocked,
+          }));
+        }
         setReviewDoc(null);
         setBanner({
           tone: data.document_status === 'Accepted' ? 'green' : 'amber',
           title: `Document ${data.document_status}`,
           message: data.message || 'Document reviewed and saved successfully.',
         });
-        await Promise.all([fetchVault(query), fetchIdentity()]);
+        // Re-fetch to ensure persisted state is reflected
+        await Promise.all([fetchVault(query, true), fetchIdentity(true)]);
       } else {
         setError({ title: 'Verification Failed', message: data.error || 'Could not save review.' });
       }
@@ -637,7 +805,7 @@ export default function DocumentVault() {
     const res = await apiFetch(`/${docId}?user_id=${encodeURIComponent(userId)}`, { method: 'DELETE' });
     if (res.ok) {
       setBanner({ tone: 'green', title: 'Deleted', message: 'The document was removed from your vault.' });
-      fetchVault(query);
+      await Promise.all([fetchVault(query, true), fetchIdentity(true)]);
     } else {
       const data = await res.json().catch(() => ({}));
       setError({ title: 'Delete failed', message: data.error || 'Could not delete the document.' });
@@ -646,7 +814,7 @@ export default function DocumentVault() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchIdentity(), fetchVault(query)]);
+    await Promise.all([fetchIdentity(true), fetchVault(query, true)]);
     setRefreshing(false);
   };
 
@@ -669,8 +837,9 @@ export default function DocumentVault() {
         setResetOpen(false);
         setResetPassword('');
         setBanner({ tone: 'green', title: 'Identity successfully reset', message: data.message });
-        await Promise.all([fetchIdentity(), fetchVault('')]);
-        navigate('/verify-aadhaar');
+        setIdentity({ identityLocked: false, resetAvailable: true, confidence: 0 });
+        setDocuments([]);
+        await Promise.all([fetchIdentity(true), fetchVault('', true)]);
       } else {
         setError({ title: 'Reset failed', message: data.error || 'Could not reset identity lock.' });
       }
@@ -701,6 +870,107 @@ export default function DocumentVault() {
             </p>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (vaultVerificationStatus === 'checking') {
+    return (
+      <div style={styles.shell}>
+        <div style={styles.heroBackdrop} />
+        <div style={styles.contentWrap}>
+          <div style={{ ...styles.emptyState, minHeight: 420, marginTop: 36 }}>
+            <Loader2 size={40} className="spin" color="#2563eb" />
+            <h2 style={{ margin: '18px 0 8px', fontSize: 28, fontWeight: 950, color: '#0f172a' }}>
+              Loading Document Vault...
+            </h2>
+          </div>
+        </div>
+        <style>{`
+          .spin { animation: spin 1s linear infinite; }
+          @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        `}</style>
+      </div>
+    );
+  }
+
+  if (!vaultUnlocked) {
+    return (
+      <div style={styles.shell}>
+        <div style={styles.heroBackdrop} />
+        <div style={styles.contentWrap}>
+          <div style={styles.header}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+                <div style={styles.brandMark}>
+                  <ShieldCheck size={24} />
+                </div>
+                <Badge tone="blue">SATYA Secure Vault</Badge>
+                <Badge tone="amber">OTP protected</Badge>
+              </div>
+              <h1 style={styles.title}>Unlock your Document Vault</h1>
+              <p style={styles.subtitle}>
+                A one-time password will be sent to your registered Gmail address before the vault contents are revealed.
+              </p>
+            </div>
+          </div>
+
+          <div style={{ ...styles.emptyState, minHeight: 420, marginTop: 36 }}>
+            <div style={{
+              width: 92,
+              height: 92,
+              borderRadius: 28,
+              display: 'grid',
+              placeItems: 'center',
+              background: 'linear-gradient(135deg, rgba(37,99,235,0.12), rgba(16,185,129,0.12))',
+              color: '#2563eb',
+              marginBottom: 18,
+            }}>
+              <Lock size={40} />
+            </div>
+            <h2 style={{ margin: '0 0 10px', fontSize: 28, fontWeight: 950, color: '#0f172a' }}>
+              {otpBooting ? 'Checking shared verification...' : 'Vault locked'}
+            </h2>
+            <p style={{ maxWidth: 680, margin: 0, color: '#475569', lineHeight: 1.8, textAlign: 'center' }}>
+              {otpBanner || 'To access the vault, verify the shared OTP session first. The same verification will also be reused by Check Eligibility.'}
+            </p>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', marginTop: 22 }}>
+              <button
+                type="button"
+                onClick={requestVaultOtp}
+                disabled={otpSending || otpBooting}
+                style={{
+                  ...styles.primaryBtn,
+                  opacity: (otpSending || otpBooting) ? 0.7 : 1,
+                }}
+              >
+                {otpSending ? <Loader2 size={18} className="spin" /> : <ShieldCheck size={18} />}
+                {otpSending ? 'Sending OTP...' : 'Send OTP to unlock'}
+              </button>
+            </div>
+            {error && (
+              <div style={{ ...styles.bannerError, marginTop: 18, width: '100%', maxWidth: 720 }}>
+                <AlertTriangle size={20} color="#dc2626" />
+                <div>
+                  <div style={{ fontWeight: 800, color: '#991b1b' }}>{error.title || 'OTP required'}</div>
+                  <div style={{ color: '#7f1d1d', marginTop: 4 }}>{error.message || 'Verification is required to continue.'}</div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <OTPVerificationModal
+          isOpen={showOTPModal}
+          onClose={() => setShowOTPModal(false)}
+          onVerified={handleVaultOTPVerified}
+          purpose="document_verification"
+        />
+
+        <style>{`
+          .spin { animation: spin 1s linear infinite; }
+          @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        `}</style>
       </div>
     );
   }
@@ -765,7 +1035,7 @@ export default function DocumentVault() {
         <div style={{ marginTop: 24, marginBottom: 24 }}>
           <IdentityLockCard
             identity={identity}
-            resetAvailable={identity.resetAvailable !== false}
+            resetAvailable={identity?.resetAvailable !== false}
             onReset={() => setResetOpen(true)}
           />
         </div>
@@ -959,13 +1229,13 @@ export default function DocumentVault() {
         {resetOpen && (
           <Modal
             title="Reset Identity Verification"
-            subtitle="This permanently removes your Identity Lock and all identity-linked documents."
+            subtitle="This permanently removes your stored identity verification data."
             onClose={() => setResetOpen(false)}
             width={720}
           >
             <div style={{ display: 'grid', gap: 14 }}>
               <div style={styles.calloutDanger}>
-                Resetting your Identity Lock will permanently remove your verified identity and all identity-linked document verification. All documents in your SATYA Vault will also be permanently deleted because they are linked to your verified identity. This action cannot be undone.
+                Resetting your Identity Lock will permanently erase your stored identity verification data. Unrelated documents in your SATYA Vault will remain available. This action cannot be undone.
               </div>
               <div style={styles.inputGrid}>
                 <label style={styles.label}>
@@ -993,7 +1263,7 @@ export default function DocumentVault() {
                     cursor: resetBusy || !resetPassword ? 'not-allowed' : 'pointer',
                   }}
                 >
-                  {resetBusy ? 'Resetting...' : 'Continue'}
+                  {resetBusy ? 'Resetting...' : 'Confirm Reset'}
                 </button>
               </div>
             </div>
@@ -1002,14 +1272,21 @@ export default function DocumentVault() {
       </AnimatePresence>
 
       <DocumentReviewModal
-        key={reviewDoc?.document_id || 'review-modal'}
+        key={reviewDoc?.document_id || reviewDoc?.document?._id || 'review-modal'}
         isOpen={!!reviewDoc}
         document={reviewDoc?.document || {}}
         onClose={() => {
           setReviewDoc(null);
-          fetchVault(query); // refresh to show Awaiting Review doc
+          fetchVault(query, true); // refresh to show Awaiting Review doc
         }}
         onConfirm={handleReviewConfirm}
+      />
+
+      <OTPVerificationModal
+        isOpen={showOTPModal}
+        onClose={() => setShowOTPModal(false)}
+        onVerified={handleVaultOTPVerified}
+        purpose="document_verification"
       />
 
       <style>{`

@@ -131,12 +131,14 @@ export default function OTPVerificationModal({
 
     setLoading(true);
     setError(null);
-    
-    // In our new flow, for document_verification we verify the OTP along with the review
-    // data directly in the confirm_review_with_otp endpoint.
-    // So we just pass the OTP back to the parent component.
-    setLoading(false);
-    onVerified(otpCode);
+    try {
+      await Promise.resolve(onVerified(otpCode));
+      setSuccess(true);
+    } catch (err) {
+      setError({ type: 'error', message: err?.message || 'Verification failed.' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const formatTime = (seconds) => {

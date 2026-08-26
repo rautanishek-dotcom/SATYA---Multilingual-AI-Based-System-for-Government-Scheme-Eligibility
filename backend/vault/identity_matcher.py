@@ -43,20 +43,30 @@ def calculate_name_similarity(name1, name2):
     joined1 = " ".join(tokens1)
     joined2 = " ".join(tokens2)
     ratio = SequenceMatcher(None, joined1, joined2).ratio() * 100
+    compact_ratio = SequenceMatcher(None, "".join(tokens1), "".join(tokens2)).ratio() * 100
 
     if tokens1 == tokens2:
         return 100.0
 
-    token_score = 0.0
-    matched = 0
+    set1 = set(tokens1)
+    set2 = set(tokens2)
+    shared = set1 & set2
+    token_overlap = (len(shared) / max(len(set1), len(set2))) * 100
+
+    matched = 0.0
     for token in tokens1:
         if token in tokens2:
-            matched += 1
+            matched += 1.0
             continue
         if len(token) > 1 and any(other.startswith(token[0]) or token.startswith(other[0]) for other in tokens2):
             matched += 0.5
     token_score = (matched / max(len(tokens1), len(tokens2))) * 100
-    return round(max(ratio, token_score), 2)
+
+    initials1 = "".join(token[0] for token in tokens1 if token)
+    initials2 = "".join(token[0] for token in tokens2 if token)
+    initials_score = SequenceMatcher(None, initials1, initials2).ratio() * 100 if initials1 and initials2 else 0.0
+
+    return round(max(ratio, compact_ratio, token_overlap, token_score, initials_score), 2)
 
 
 def _identity_profile_view(user):

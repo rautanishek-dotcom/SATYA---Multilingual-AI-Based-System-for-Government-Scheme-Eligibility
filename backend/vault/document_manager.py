@@ -528,6 +528,12 @@ class DocumentManager:
 
             # ── Build the full MongoDB record ────────────────────────────────────
             now = datetime.datetime.utcnow()
+            verification_score = VaultUtils.verification_score(
+                verification_confidence,
+                quality_data.get("quality_score", 0.0),
+                None,
+                identity_locked=False,
+            )
             metadata_record = {
                 "user_id": str(user_id),
                 "document_name": document_name,
@@ -562,6 +568,7 @@ class DocumentManager:
                 "confidence_tier": confidence_tier,
                 "field_confidence": field_confidence,
                 "identity_match_score": None,  # null when no reference data available
+                "verification_score": verification_score,
 
                 # Processing metrics
                 "processing_time": round(time.time() - upload_start, 3),

@@ -8,11 +8,14 @@ All credentials are read from environment variables – nothing is hardcoded.
 import logging
 import json
 import os
+import re
+from email.utils import make_msgid, parseaddr
 from datetime import datetime, timezone
 from pathlib import Path
 
 from flask import Flask
 from flask_mail import Mail, Message
+from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +27,104 @@ MAIL_BACKEND_SMTP = "smtp"
 MAIL_BACKEND_CONSOLE = "console"
 MAIL_BACKEND_FILE = "file"
 MAIL_BACKEND_DRY_RUN = "dry_run"
+_PLACEHOLDER_ENV_VALUES = {
+    "yourgmail@gmail.com",
+    "your_google_app_password",
+    "satya <yourgmail@gmail.com>",
+}
+
+
+def _load_backend_env() -> None:
+    """Load environment files without overwriting already injected secrets."""
+    repo_root = Path(__file__).resolve().parents[2]
+    backend_dir = Path(__file__).resolve().parents[1]
+    for env_file in (repo_root / ".env", backend_dir / ".env"):
+        if env_file.exists():
+            load_dotenv(dotenv_path=env_file, override=False)
+    load_dotenv(override=False)
+
+
+def _normalize_env_value(value: str | None) -> str | None:
+    if value is None:
+        return None
+    cleaned = value.strip()
+    if not cleaned:
+        return None
+    lowered = cleaned.lower()
+    if lowered in _PLACEHOLDER_ENV_VALUES:
+        return None
+    for placeholder in _PLACEHOLDER_ENV_VALUES:
+        if placeholder in lowered:
+            return None
+    return cleaned
+
+
+def _get_env_value(key: str, default: str | None = None) -> str | None:
+    return _normalize_env_value(os.getenv(key)) or default
+
+
+def _as_bool(value: str | None, default: bool = False) -> bool:
+    if value is None:
+        return default
+    return value.strip().lower() in ("true", "1", "yes", "on")
+
+
+def _safe_email_hint(email: str | None) -> str:
+    if not email or "@" not in email:
+        return "unavailable"
+    local, domain = email.split("@", 1)
+    if not local:
+        return f"*@{domain}"
+    if len(local) <= 2:
+        masked_local = local[0] + "*"
+    else:
+        masked_local = local[0] + "*" * (len(local) - 2) + local[-1]
+    return f"{masked_local}@{domain}"
+
+
+def _safe_sender_hint(sender: str | None) -> str:
+    return _safe_email_hint(sender)
+
+
+def _extract_email_address(value: str | None) -> str | None:
+    if not value:
+        return None
+    _, address = parseaddr(value)
+    address = address.strip()
+    return address or None
+
+
+def _sanitize_error_message(message: str) -> str:
+    text = message or ""
+    text = re.sub(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}", "<email>", text)
+    text = re.sub(r"\b\d{6}\b", "<otp>", text)
+    return text
+
+
+def _log_mail_diagnostics(backend: str, recipient_email: str | None = None) -> None:
+    username = _get_env_value("MAIL_USERNAME", "") or ""
+    server = _get_env_value("MAIL_SERVER", "smtp.gmail.com") or "smtp.gmail.com"
+    port = int(_get_env_value("MAIL_PORT", "587"))
+    tls_enabled = _as_bool(_get_env_value("MAIL_USE_TLS", "True"), True)
+    ssl_enabled = _as_bool(_get_env_value("MAIL_USE_SSL", "False"), False)
+    password_configured = bool(_normalize_env_value(os.getenv("MAIL_PASSWORD")))
+    sender = _extract_email_address(_get_env_value("MAIL_DEFAULT_SENDER", username) or username)
+    sender_configured = bool(_normalize_env_value(sender))
+    recipient_configured = bool(_normalize_env_value(recipient_email))
+    logger.info(
+        "[EMAIL][SMTP_DIAG] backend=%s server=%s port=%s tls=%s ssl=%s username_configured=%s password_configured=%s sender_configured=%s sender_hint=%s recipient_configured=%s recipient_hint=%s",
+        backend,
+        server,
+        port,
+        tls_enabled,
+        ssl_enabled,
+        bool(username),
+        password_configured,
+        sender_configured,
+        _safe_sender_hint(sender),
+        recipient_configured,
+        _safe_email_hint(recipient_email),
+    )
 
 
 def _get_mail_backend() -> str:
@@ -32,15 +133,16 @@ def _get_mail_backend() -> str:
 
 def init_mail(app: Flask) -> None:
     """Configure Flask-Mail from environment variables and bind to *app*."""
+    _load_backend_env()
     backend = _get_mail_backend()
     app.config["SATYA_MAIL_BACKEND"] = backend
-    app.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER", "smtp.gmail.com")
-    app.config["MAIL_PORT"] = int(os.getenv("MAIL_PORT", "587"))
-    app.config["MAIL_USE_TLS"] = os.getenv("MAIL_USE_TLS", "True").lower() in ("true", "1", "yes")
-    app.config["MAIL_USE_SSL"] = os.getenv("MAIL_USE_SSL", "False").lower() in ("true", "1", "yes")
-    app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME", "")
-    app.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD", "")
-    app.config["MAIL_DEFAULT_SENDER"] = os.getenv("MAIL_DEFAULT_SENDER", app.config["MAIL_USERNAME"])
+    app.config["MAIL_SERVER"] = _get_env_value("MAIL_SERVER", "smtp.gmail.com")
+    app.config["MAIL_PORT"] = int(_get_env_value("MAIL_PORT", "587"))
+    app.config["MAIL_USE_TLS"] = (_get_env_value("MAIL_USE_TLS", "True") or "True").lower() in ("true", "1", "yes")
+    app.config["MAIL_USE_SSL"] = (_get_env_value("MAIL_USE_SSL", "False") or "False").lower() in ("true", "1", "yes")
+    app.config["MAIL_USERNAME"] = _get_env_value("MAIL_USERNAME", "") or ""
+    app.config["MAIL_PASSWORD"] = _get_env_value("MAIL_PASSWORD", "") or ""
+    app.config["MAIL_DEFAULT_SENDER"] = _get_env_value("MAIL_DEFAULT_SENDER", app.config["MAIL_USERNAME"]) or app.config["MAIL_USERNAME"]
     app.config["MAIL_SUPPRESS_SEND"] = backend in {MAIL_BACKEND_CONSOLE, MAIL_BACKEND_FILE, MAIL_BACKEND_DRY_RUN}
     app.config["MAIL_DEBUG"] = backend != MAIL_BACKEND_SMTP
 
@@ -179,7 +281,7 @@ def send_otp_email(recipient_email: str, otp_code: str, purpose: str = "document
     All errors are logged but never propagated to the caller.
     """
     purpose_label = PURPOSE_LABELS.get(purpose, "Verification")
-    subject = "SATYA Verification Code"
+    subject = os.getenv("SATYA_TEST_SUBJECT", "SATYA Verification Code").strip() or "SATYA Verification Code"
 
     html_body = _build_otp_html(otp_code, purpose_label)
     plain_body = (
@@ -194,15 +296,36 @@ def send_otp_email(recipient_email: str, otp_code: str, purpose: str = "document
         backend = _get_mail_backend()
         if backend != MAIL_BACKEND_SMTP:
             return _send_mock_email(recipient_email, subject, plain_body, html_body, purpose, backend)
+        _log_mail_diagnostics(backend, recipient_email)
+        sender = _extract_email_address(_get_env_value("MAIL_DEFAULT_SENDER", _get_env_value("MAIL_USERNAME", "")))
+        message_id = make_msgid(domain=(sender.split("@", 1)[1] if sender and "@" in sender else None))
         msg = Message(
             subject=subject,
             recipients=[recipient_email],
             body=plain_body,
             html=html_body,
         )
+        logger.info(
+            "[EMAIL][SMTP_TRACE] from_hint=%s to_hint=%s reply_to_hint=%s recipients=%s message_id=%s subject=%s",
+            _safe_sender_hint(sender),
+            _safe_email_hint(recipient_email),
+            _safe_sender_hint(sender),
+            [_safe_email_hint(addr) for addr in msg.recipients],
+            message_id,
+            subject,
+        )
         mail.send(msg)
-        logger.info("[EMAIL] OTP email sent to %s (purpose=%s)", recipient_email, purpose)
+        logger.info(
+            "[EMAIL] OTP email accepted for delivery (purpose=%s, recipient_hint=%s, message_id=%s)",
+            purpose,
+            _safe_email_hint(recipient_email),
+            message_id,
+        )
         return True
     except Exception as exc:
-        logger.error("[EMAIL] Failed to send OTP to %s: %s", recipient_email, exc)
+        logger.error(
+            "[EMAIL] Failed to send OTP (type=%s, message=%s)",
+            exc.__class__.__name__,
+            _sanitize_error_message(str(exc)),
+        )
         return False

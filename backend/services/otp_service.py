@@ -32,6 +32,12 @@ OTP_LENGTH = 6
 OTP_EXPIRY_MINUTES = 5
 MAX_VERIFY_ATTEMPTS = 5
 MAX_RESEND_COUNT = 3
+SHARED_VERIFICATION_PURPOSE = "satya_user_verification"
+PURPOSE_ALIASES = {
+    "document_verification": SHARED_VERIFICATION_PURPOSE,
+    "eligibility_check": SHARED_VERIFICATION_PURPOSE,
+    SHARED_VERIFICATION_PURPOSE: SHARED_VERIFICATION_PURPOSE,
+}
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────
@@ -42,6 +48,11 @@ def _collection():
     if db is None:
         return None
     return db.email_otps
+
+
+def normalize_purpose(purpose: str) -> str:
+    """Map all user-verification OTP flows onto one shared purpose."""
+    return PURPOSE_ALIASES.get((purpose or "").strip(), SHARED_VERIFICATION_PURPOSE)
 
 
 def _hash_otp(plain_otp: str) -> bytes:
@@ -72,6 +83,55 @@ def _cleanup_expired():
         logger.warning("[OTP] Expired cleanup failed: %s", exc)
 
 
+def _find_session(col, user_id: str, purpose: str, document_id: str = None, verified: bool = None):
+    """Return the latest OTP session for a user and shared purpose."""
+    query = {
+        "user_id": str(user_id),
+        "purpose": normalize_purpose(purpose),
+        "expires_at": {"$gt": datetime.datetime.utcnow()},
+    }
+    if verified is not None:
+        query["verified"] = verified
+    return col.find_one(query, sort=[("created_at", -1)])
+
+
+def get_verification_status(user_id: str, purpose: str, document_id: str = None) -> dict:
+    """Return the current shared OTP session state for a user."""
+    _cleanup_expired()
+    col = _collection()
+    if col is None:
+        return {"success": False, "message": "Database unavailable"}
+
+    record = _find_session(col, user_id=user_id, purpose=purpose, document_id=document_id)
+    if not record:
+        return {
+            "success": True,
+            "active": False,
+            "verified": False,
+            "status": "none",
+            "resend_count": 0,
+            "resends_remaining": MAX_RESEND_COUNT,
+        }
+
+    resend_count = int(record.get("resend_count", 0) or 0)
+    expires_at = record.get("expires_at")
+    verified = bool(record.get("verified", False))
+    attempts = int(record.get("attempt_count", 0) or 0)
+    return {
+        "success": True,
+        "active": True,
+        "verified": verified,
+        "status": "verified" if verified else "pending",
+        "expires_at": expires_at.isoformat() if hasattr(expires_at, "isoformat") else expires_at,
+        "attempt_count": attempts,
+        "resend_count": resend_count,
+        "resends_remaining": max(0, MAX_RESEND_COUNT - resend_count),
+        "purpose": record.get("purpose", normalize_purpose(purpose)),
+        "document_id": record.get("document_id"),
+        "verified_at": record.get("verified_at").isoformat() if hasattr(record.get("verified_at"), "isoformat") else record.get("verified_at"),
+    }
+
+
 # ── Public API ─────────────────────────────────────────────────────────────
 
 def generate_otp() -> str:
@@ -88,6 +148,7 @@ def create_otp(
     document_id: str = None,
     ip_address: str = "",
     user_agent: str = "",
+    force_new: bool = False,
 ) -> dict:
     """
     Generate a new OTP, store its hash in MongoDB, and return the result.
@@ -100,22 +161,39 @@ def create_otp(
     if col is None:
         return {"success": False, "message": "Database unavailable"}
 
+    purpose = normalize_purpose(purpose)
+
+    verified_session = _find_session(col, user_id=user_id, purpose=purpose, document_id=document_id, verified=True)
+    if verified_session:
+        return {
+            "success": True,
+            "already_verified": True,
+            "verified": True,
+            "message": "A valid OTP verification session already exists",
+            "expires_at": verified_session["expires_at"].isoformat() if hasattr(verified_session.get("expires_at"), "isoformat") else verified_session.get("expires_at"),
+            "resend_count": verified_session.get("resend_count", 0),
+            "resends_remaining": max(0, MAX_RESEND_COUNT - int(verified_session.get("resend_count", 0) or 0)),
+        }
+
     # Rate-limit: check how many active (non-expired, non-verified) OTPs exist
     # for this user + purpose. We track resend_count on the latest record.
-    existing = col.find_one(
-        {
-            "user_id": str(user_id),
-            "purpose": purpose,
-            "verified": False,
-            "expires_at": {"$gt": datetime.datetime.utcnow()},
-        },
-        sort=[("created_at", -1)],
-    )
+    existing = _find_session(col, user_id=user_id, purpose=purpose, document_id=document_id, verified=False)
 
     if existing and existing.get("resend_count", 0) >= MAX_RESEND_COUNT:
         return {
             "success": False,
             "message": f"Maximum resend limit ({MAX_RESEND_COUNT}) reached. Please try again later.",
+        }
+
+    if existing and not force_new:
+        return {
+            "success": True,
+            "already_pending": True,
+            "verified": False,
+            "message": "A valid OTP is already active for this session",
+            "expires_at": existing["expires_at"].isoformat() if hasattr(existing.get("expires_at"), "isoformat") else existing.get("expires_at"),
+            "resend_count": existing.get("resend_count", 0),
+            "resends_remaining": max(0, MAX_RESEND_COUNT - int(existing.get("resend_count", 0) or 0)),
         }
 
     # Invalidate any previous OTPs for same user + purpose
@@ -192,17 +270,14 @@ def verify_otp(
     if col is None:
         return {"success": False, "message": "Database unavailable"}
 
-    # Find the latest active OTP for this user + purpose
-    query = {
-        "user_id": str(user_id),
-        "purpose": purpose,
-        "verified": False,
-        "expires_at": {"$gt": datetime.datetime.utcnow()},
-    }
-    if document_id:
-        query["document_id"] = str(document_id)
+    purpose = normalize_purpose(purpose)
 
-    record = col.find_one(query, sort=[("created_at", -1)])
+    # Find the latest active OTP for this user + purpose
+    verified_session = _find_session(col, user_id=user_id, purpose=purpose, document_id=document_id, verified=True)
+    if verified_session:
+        return {"success": True, "message": "OTP already verified successfully", "already_verified": True}
+
+    record = _find_session(col, user_id=user_id, purpose=purpose, document_id=document_id, verified=False)
 
     if not record:
         AuditLogger.record("otp_verify_failed", user_id, {
@@ -238,17 +313,34 @@ def verify_otp(
 
     # Verify the OTP hash
     if _check_otp(otp_code, record["otp_hash"]):
-        # Success – mark as verified, then delete
-        col.delete_one({"_id": record["_id"]})
+        # Success – persist the verified session until expiration so other
+        # surfaces can reuse the same authorization state.
+        now = datetime.datetime.utcnow()
+        col.update_one(
+            {"_id": record["_id"]},
+            {
+                "$set": {
+                    "verified": True,
+                    "verified_at": now,
+                    "otp_hash": None,
+                }
+            },
+        )
         AuditLogger.record("otp_verified", user_id, {
             "purpose": purpose,
             "document_id": record.get("document_id"),
             "attempts_used": attempt_count + 1,
             "ip_address": ip_address,
             "user_agent": user_agent,
+            "verified_at": now.isoformat(),
         })
         logger.info("[OTP] Verified for user=%s purpose=%s (attempts=%d)", user_id, purpose, attempt_count + 1)
-        return {"success": True, "message": "OTP verified successfully"}
+        return {
+            "success": True,
+            "message": "OTP verified successfully",
+            "verified": True,
+            "expires_at": record.get("expires_at").isoformat() if hasattr(record.get("expires_at"), "isoformat") else record.get("expires_at"),
+        }
     else:
         remaining = MAX_VERIFY_ATTEMPTS - (attempt_count + 1)
         AuditLogger.record("otp_verify_failed", user_id, {
@@ -272,15 +364,7 @@ def get_resend_info(user_id: str, purpose: str) -> dict:
     if col is None:
         return {"resend_count": 0, "resends_remaining": MAX_RESEND_COUNT}
 
-    record = col.find_one(
-        {
-            "user_id": str(user_id),
-            "purpose": purpose,
-            "verified": False,
-            "expires_at": {"$gt": datetime.datetime.utcnow()},
-        },
-        sort=[("created_at", -1)],
-    )
+    record = _find_session(col, user_id=user_id, purpose=purpose, verified=False)
 
     count = record.get("resend_count", 0) if record else 0
     return {

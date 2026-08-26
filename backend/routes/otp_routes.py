@@ -9,12 +9,12 @@ Endpoints:
 
 import logging
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, session
 from bson import ObjectId
 
 from database import get_db
 from routes.auth import token_required
-from services.otp_service import create_otp, verify_otp, get_resend_info
+from services.otp_service import create_otp, verify_otp, get_resend_info, get_verification_status, SHARED_VERIFICATION_PURPOSE
 from services.email_service import send_otp_email
 
 logger = logging.getLogger(__name__)
@@ -28,6 +28,19 @@ def _client_meta():
     ip = request.headers.get("X-Forwarded-For", request.remote_addr or "")
     ua = request.headers.get("User-Agent", "")
     return ip, ua
+
+
+def _user_email(current_user_id):
+    db = get_db()
+    if db is None:
+        return None, None, ("Database unavailable", 500)
+    user = db.users.find_one({"_id": ObjectId(current_user_id)})
+    if not user:
+        return None, None, ("User not found", 404)
+    user_email = user.get("email")
+    if not user_email:
+        return None, None, ("No email address registered for this account", 400)
+    return user_email, db, None
 
 
 # ── POST /api/otp/send ────────────────────────────────────────────────────
@@ -49,18 +62,20 @@ def send_otp(current_user_id, current_user_role):
     if purpose not in VALID_PURPOSES:
         return jsonify({"error": f"Invalid purpose. Must be one of: {', '.join(VALID_PURPOSES)}"}), 400
 
-    # Look up the user's registered email
-    db = get_db()
-    if db is None:
-        return jsonify({"error": "Database unavailable"}), 500
+    user_email, db, email_error = _user_email(current_user_id)
+    if email_error:
+        message, status_code = email_error
+        return jsonify({"error": message}), status_code
 
-    user = db.users.find_one({"_id": ObjectId(current_user_id)})
-    if not user:
-        return jsonify({"error": "User not found"}), 404
-
-    user_email = user.get("email")
-    if not user_email:
-        return jsonify({"error": "No email address registered for this account"}), 400
+    # A verified vault OTP belongs to the current Flask login session. Do not
+    # reuse the short-lived MongoDB record after that session has ended.
+    vault_verified = session.get("document_vault_verified_user_id") == str(current_user_id)
+    if purpose == "document_verification" and not vault_verified:
+        db.email_otps.delete_many({
+            "user_id": str(current_user_id),
+            "purpose": SHARED_VERIFICATION_PURPOSE,
+            "verified": True,
+        })
 
     ip, ua = _client_meta()
 
@@ -75,7 +90,37 @@ def send_otp(current_user_id, current_user_role):
     )
 
     if not result.get("success"):
-        return jsonify({"error": result.get("message", "Failed to generate OTP")}), 429
+        status_code = 429
+        if result.get("message") == "A valid OTP verification session already exists":
+            status_code = 200
+        return jsonify({
+            "error": result.get("message", "Failed to generate OTP"),
+            "already_verified": result.get("already_verified", False),
+            "already_pending": result.get("already_pending", False),
+            "resend_count": result.get("resend_count", 0),
+            "resends_remaining": result.get("resends_remaining", 0),
+            "expires_at": result.get("expires_at"),
+        }), status_code
+
+    if result.get("already_verified"):
+        return jsonify({
+            "message": result.get("message"),
+            "already_verified": True,
+            "verified": True,
+            "expires_at": result.get("expires_at"),
+            "resend_count": result.get("resend_count", 0),
+            "resends_remaining": result.get("resends_remaining", 0),
+        }), 200
+
+    if result.get("already_pending"):
+        return jsonify({
+            "message": result.get("message"),
+            "already_pending": True,
+            "verified": False,
+            "expires_at": result.get("expires_at"),
+            "resend_count": result.get("resend_count", 0),
+            "resends_remaining": result.get("resends_remaining", 0),
+        }), 200
 
     # Send email
     plain_otp = result.pop("otp")  # remove plain OTP from response
@@ -103,6 +148,7 @@ def send_otp(current_user_id, current_user_role):
         "expires_at": result.get("expires_at"),
         "resend_count": result.get("resend_count", 0),
         "resends_remaining": result.get("resends_remaining", 3),
+        "verified": False,
     }), 200
 
 
@@ -142,7 +188,14 @@ def verify_otp_route(current_user_id, current_user_role):
     )
 
     if result.get("success"):
-        return jsonify({"message": result["message"], "verified": True}), 200
+        if purpose == "document_verification":
+            session["document_vault_verified_user_id"] = str(current_user_id)
+        return jsonify({
+            "message": result["message"],
+            "verified": True,
+            "already_verified": result.get("already_verified", False),
+            "expires_at": result.get("expires_at"),
+        }), 200
     else:
         status_code = 400
         if "attempt" in result.get("message", "").lower():
@@ -152,6 +205,51 @@ def verify_otp_route(current_user_id, current_user_role):
             "verified": False,
             "attempts_remaining": result.get("attempts_remaining"),
         }), status_code
+
+
+# ── GET /api/otp/status ───────────────────────────────────────────────────
+
+@otp_bp.route("/status", methods=["GET"])
+@token_required
+def otp_status(current_user_id, current_user_role):
+    """
+    Return the shared OTP session state for the logged-in user.
+    Query params:
+      - purpose: "document_verification" | "eligibility_check"  (optional, defaults to shared session)
+      - document_id: string (optional)
+    """
+    purpose = request.args.get("purpose", "")
+    document_id = request.args.get("document_id")
+
+    if purpose and purpose not in VALID_PURPOSES:
+        return jsonify({"error": f"Invalid purpose. Must be one of: {', '.join(VALID_PURPOSES)}"}), 400
+
+    is_verified_in_session = (
+        purpose == "document_verification"
+        and session.get("document_vault_verified_user_id") == str(current_user_id)
+    )
+    if is_verified_in_session:
+        return jsonify({
+            "success": True,
+            "active": True,
+            "verified": True,
+            "status": "verified"
+        }), 200
+
+    if purpose == "document_verification":
+        return jsonify({
+            "success": True,
+            "active": False,
+            "verified": False,
+            "status": "none",
+            "resend_count": 0,
+            "resends_remaining": 3,
+        }), 200
+
+    result = get_verification_status(current_user_id, purpose or "document_verification", document_id=document_id)
+    if not result.get("success"):
+        return jsonify({"error": result.get("message", "Failed to fetch OTP status")}), 500
+    return jsonify(result), 200
 
 
 # ── POST /api/otp/resend ──────────────────────────────────────────────────
@@ -183,18 +281,10 @@ def resend_otp(current_user_id, current_user_role):
             "resends_remaining": 0,
         }), 429
 
-    # Look up user email
-    db = get_db()
-    if db is None:
-        return jsonify({"error": "Database unavailable"}), 500
-
-    user = db.users.find_one({"_id": ObjectId(current_user_id)})
-    if not user:
-        return jsonify({"error": "User not found"}), 404
-
-    user_email = user.get("email")
-    if not user_email:
-        return jsonify({"error": "No email address registered"}), 400
+    user_email, db, email_error = _user_email(current_user_id)
+    if email_error:
+        message, status_code = email_error
+        return jsonify({"error": message}), status_code
 
     ip, ua = _client_meta()
 
@@ -205,10 +295,20 @@ def resend_otp(current_user_id, current_user_role):
         document_id=document_id,
         ip_address=ip,
         user_agent=ua,
+        force_new=True,
     )
 
     if not result.get("success"):
         return jsonify({"error": result.get("message", "Failed to resend OTP")}), 429
+
+    if result.get("already_verified"):
+        return jsonify({
+            "message": result.get("message"),
+            "already_verified": True,
+            "resend_count": result.get("resend_count", 0),
+            "resends_remaining": result.get("resends_remaining", 0),
+            "expires_at": result.get("expires_at"),
+        }), 200
 
     plain_otp = result.pop("otp")
     email_sent = send_otp_email(user_email, plain_otp, purpose)

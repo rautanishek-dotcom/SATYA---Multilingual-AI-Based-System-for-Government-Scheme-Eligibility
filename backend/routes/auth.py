@@ -105,3 +105,9 @@ def login():
         }), 200
         
     return jsonify({"error": "Invalid credentials"}), 401
+
+@auth_bp.route('/logout', methods=['POST'])
+def logout():
+    from flask import session
+    session.clear()
+    return jsonify({"message": "Logged out successfully"}), 200

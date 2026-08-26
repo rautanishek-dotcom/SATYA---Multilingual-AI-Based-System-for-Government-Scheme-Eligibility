@@ -13,11 +13,18 @@ const Navbar = () => {
     setIsOpen(false);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('satya_token');
-    localStorage.removeItem('satya_user');
-    navigate('/login');
-    setIsOpen(false);
+  const handleLogout = async () => {
+    try {
+      await fetch('http://localhost:5000/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } finally {
+      localStorage.removeItem('satya_token');
+      localStorage.removeItem('satya_user');
+      navigate('/login');
+      setIsOpen(false);
+    }
   };
 
   const token = localStorage.getItem('satya_token');

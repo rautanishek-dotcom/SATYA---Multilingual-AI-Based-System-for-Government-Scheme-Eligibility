@@ -17,6 +17,37 @@ class DocumentVault:
         return db.vault_documents
 
     @staticmethod
+    def _identity_locked_for_user(user_id):
+        db = get_db()
+        if db is None or not user_id:
+            return False
+        try:
+            user = db.users.find_one({"_id": ObjectId(user_id)})
+        except Exception:
+            user = None
+        return bool(user and user.get("identity_locked"))
+
+    @staticmethod
+    def _normalize_verification_score(doc, identity_locked=False):
+        if not isinstance(doc, dict):
+            return doc
+        confidence = float(doc.get("confidence", 0) or 0)
+        quality_score = float(doc.get("quality_score", 0) or 0)
+        identity_score = doc.get("identity_match_score", None)
+        if identity_score is not None:
+            try:
+                identity_score = float(identity_score or 0)
+            except Exception:
+                identity_score = 0.0
+        doc["verification_score"] = VaultUtils.verification_score(
+            confidence,
+            quality_score,
+            identity_score,
+            identity_locked=identity_locked,
+        )
+        return doc
+
+    @staticmethod
     def save_document_record(record):
         collection = DocumentVault._collection()
         now = datetime.datetime.utcnow()
@@ -52,6 +83,7 @@ class DocumentVault:
             "confidence": float(record.get("confidence", 0) or 0),
             "confidence_tier": record.get("confidence_tier", ""),
             "field_confidence": VaultUtils.to_serializable(record.get("field_confidence", {})),
+            "verification_score": float(record.get("verification_score", 0) or 0),
 
             # Processing metrics
             "processing_time": float(record.get("processing_time", 0) or 0),
@@ -102,6 +134,7 @@ class DocumentVault:
             "confidence": float(metadata.get("confidence", 0)),
             "quality_score": float(metadata.get("quality_score", 0)),
             "identity_match_score": float(metadata.get("identity_match_score", 0)),
+            "verification_score": float(metadata.get("verification_score", 0)),
             "identity_match_breakdown": VaultUtils.to_serializable(metadata.get("identity_match_breakdown", {})),
             "fraud_probability": float(metadata.get("fraud_probability", 0)),
             "fraud_findings": VaultUtils.to_serializable(metadata.get("fraud_findings", [])),
@@ -152,7 +185,9 @@ class DocumentVault:
                 {"document_label": {"$regex": query, "$options": "i"}},
             ]
         docs = list(collection.find(filter_query).sort("created_at", -1))
+        identity_locked = DocumentVault._identity_locked_for_user(user_id)
         for doc in docs:
+            DocumentVault._normalize_verification_score(doc, identity_locked=identity_locked)
             doc["_id"] = str(doc["_id"])
             doc["created_at"] = doc.get("created_at").isoformat() if doc.get("created_at") else None
             doc["updated_at"] = doc.get("updated_at").isoformat() if doc.get("updated_at") else None
@@ -169,6 +204,8 @@ class DocumentVault:
             query["user_id"] = str(user_id)
         doc = collection.find_one(query)
         if doc:
+            identity_locked = DocumentVault._identity_locked_for_user(user_id) if user_id is not None else False
+            DocumentVault._normalize_verification_score(doc, identity_locked=identity_locked)
             doc["_id"] = str(doc["_id"])
             doc["created_at"] = doc.get("created_at").isoformat() if doc.get("created_at") else None
             doc["updated_at"] = doc.get("updated_at").isoformat() if doc.get("updated_at") else None
@@ -246,4 +283,3 @@ class DocumentVault:
     @staticmethod
     def search_documents(user_id, query):
         return DocumentVault.get_user_vault(user_id, query=query or "")
-

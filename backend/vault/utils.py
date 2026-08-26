@@ -138,6 +138,35 @@ class VaultUtils:
         return "Poor"
 
     @staticmethod
+    def verification_score(confidence=None, quality_score=None, identity_score=None, identity_locked=False):
+        """
+        Combine the verification signals that already exist in the vault
+        into a single display score without changing the underlying checks.
+        Only the available signals are used, and the weights are normalized.
+        """
+        confidence = float(confidence or 0)
+        quality_score = float(quality_score or 0)
+        identity_score = None if identity_score is None else float(identity_score or 0)
+
+        # If no meaningful identity comparison is available yet, show the
+        # document verification confidence rather than a misleading weighted score.
+        if identity_score is None or identity_score <= 0:
+            return round(max(0.0, min(100.0, confidence)), 2)
+
+        signals = []
+        signals.append((confidence, 0.45))
+        signals.append((quality_score, 0.25))
+        if identity_score is not None:
+            signals.append((identity_score, 0.30))
+
+        if not signals:
+            return 0.0
+
+        weight_total = sum(weight for _, weight in signals) or 1.0
+        score = sum(value * weight for value, weight in signals) / weight_total
+        return round(max(0.0, min(100.0, score)), 2)
+
+    @staticmethod
     def document_summary(document_type, fields, quality, fraud, identity_score):
         missing = [k for k, v in fields.items() if isinstance(v, dict) and not str(v.get("value", "")).strip()]
         return {
