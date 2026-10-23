@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CheckCircle2, XCircle, Loader2, Mail, RefreshCw, X } from 'lucide-react';
 
 export default function OTPVerificationModal({
@@ -8,6 +9,7 @@ export default function OTPVerificationModal({
   purpose,
   documentId,
 }) {
+  const { t } = useTranslation();
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -21,9 +23,11 @@ export default function OTPVerificationModal({
   useEffect(() => {
     if (isOpen) {
       setOtp(['', '', '', '', '', '']);
+      setLoading(false);
       setError(null);
       setSuccess(false);
       setTimer(300);
+      setIsResending(false);
       
       // Auto-focus first input after a tiny delay for modal render
       setTimeout(() => {
@@ -131,12 +135,14 @@ export default function OTPVerificationModal({
 
     setLoading(true);
     setError(null);
+    
     try {
+      // Keep the inputs available when the parent rejects this OTP (for
+      // example, when it is invalid or has expired).
       await Promise.resolve(onVerified(otpCode));
       setSuccess(true);
     } catch (err) {
       setError({ type: 'error', message: err?.message || 'Verification failed.' });
-    } finally {
       setLoading(false);
     }
   };
@@ -161,9 +167,9 @@ export default function OTPVerificationModal({
           <div style={modalStyles.iconContainer}>
             <Mail size={24} color="#2563eb" />
           </div>
-          <h2 style={modalStyles.title}>Email Verification</h2>
+          <h2 style={modalStyles.title}>{t('EmailVerification', 'Email Verification')}</h2>
           <p style={modalStyles.subtitle}>
-            We've sent a 6-digit verification code to your registered email address.
+            {t('EmailVerificationSubtitle', "We've sent a 6-digit verification code to your registered email address.")}
           </p>
         </div>
 
@@ -198,14 +204,14 @@ export default function OTPVerificationModal({
         <div style={modalStyles.footer}>
           <div style={modalStyles.timerText}>
             {timer > 0 ? (
-              <span>Code expires in <strong>{formatTime(timer)}</strong></span>
+              <span>{t('CodeExpiresIn', 'Code expires in')} <strong>{formatTime(timer)}</strong></span>
             ) : (
-              <span style={{ color: '#dc2626' }}>Code has expired</span>
+              <span style={{ color: '#dc2626' }}>{t('CodeExpired', 'Code has expired')}</span>
             )}
           </div>
 
           <div style={modalStyles.resendContainer}>
-            <span style={{ color: '#64748b', fontSize: '13px' }}>Didn't receive code?</span>
+            <span style={{ color: '#64748b', fontSize: '13px' }}>{t('DidntReceiveCode', "Didn't receive code?")}</span>
             <button 
               onClick={handleResend}
               disabled={isResending || resendsRemaining <= 0 || timer > 270}
@@ -215,9 +221,9 @@ export default function OTPVerificationModal({
               }}
             >
               {isResending ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />}
-              Resend Code
+              {t('ResendCode', 'Resend Code')}
             </button>
-            <span style={{ fontSize: '12px', color: '#94a3b8' }}>({resendsRemaining} left)</span>
+            <span style={{ fontSize: '12px', color: '#94a3b8' }}>({resendsRemaining} {t('Left', 'left')})</span>
           </div>
         </div>
 
@@ -230,11 +236,11 @@ export default function OTPVerificationModal({
           }}
         >
           {loading ? (
-            <><Loader2 size={18} className="spin" /> Verifying...</>
+            <><Loader2 size={18} className="spin" /> {t('Verifying', 'Verifying...')}</>
           ) : success ? (
-            <><CheckCircle2 size={18} /> Verified</>
+            <><CheckCircle2 size={18} /> {t('Verified', 'Verified')}</>
           ) : (
-            'Verify & Continue'
+            t('VerifyAndContinue', 'Verify & Continue')
           )}
         </button>
 

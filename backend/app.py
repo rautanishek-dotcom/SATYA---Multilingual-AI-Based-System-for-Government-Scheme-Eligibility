@@ -10,6 +10,7 @@ from routes.admin import admin_bp
 from routes.vault_routes import vault_bp
 from routes.eligibility_routes import eligibility_bp
 from routes.otp_routes import otp_bp
+from routes.localization import localization_bp
 from services.email_service import init_mail
 
 import os
@@ -46,10 +47,11 @@ app.register_blueprint(admin_bp, url_prefix="/api/admin")
 app.register_blueprint(vault_bp, url_prefix="/api/vault")
 app.register_blueprint(eligibility_bp, url_prefix="/api/eligibility")
 app.register_blueprint(otp_bp, url_prefix="/api/otp")
+app.register_blueprint(localization_bp, url_prefix="/api/localization")
 
 @app.route("/")
 def home():
     return jsonify({"message": "Welcome to SATYA Backend API!"})
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5000)

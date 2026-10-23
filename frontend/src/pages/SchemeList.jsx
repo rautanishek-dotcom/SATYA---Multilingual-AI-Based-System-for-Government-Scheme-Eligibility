@@ -16,17 +16,23 @@ const SchemeList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState(null);
   const [selectedScheme, setSelectedScheme] = useState(null);
+  const [deadlineAlerts, setDeadlineAlerts] = useState([]);
+  const [alertsMessage, setAlertsMessage] = useState('');
+  const [lastVerified, setLastVerified] = useState(null);
 
   const [filters, setFilters] = useState({
     state: 'All', category: 'All', occupation: 'All', type: 'All'
   });
 
   const stateOptions = [
-    'All', 'All India', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar',
-    'Chhattisgarh', 'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand',
-    'Karnataka', 'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya',
-    'Mizoram', 'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
-    'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal', 'Delhi'
+    'All', 'Central', 'All India',
+    'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+    'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
+    'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
+    'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
+    'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+    'Andaman and Nicobar Islands', 'Chandigarh', 'Dadra and Nagar Haveli and Daman and Diu',
+    'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry'
   ];
   const categoryOptions  = ['All', 'General', 'OBC', 'SC', 'ST'];
   const occupationOptions = ['All', 'Farmer', 'Student', 'Worker', 'Business', 'Service', 'Retired'];
@@ -37,6 +43,22 @@ const SchemeList = () => {
       const res = await fetch(`http://localhost:5000/api/schemes/?lang=${i18n.language}`);
       if (!res.ok) throw new Error(t('FetchError', 'Failed to fetch schemes'));
       setSchemes(await res.json());
+      const metadataResponse = await fetch('http://localhost:5000/api/schemes/meta');
+      if (metadataResponse.ok) {
+        const metadata = await metadataResponse.json();
+        setLastVerified(metadata.last_verified || null);
+      }
+      const user = JSON.parse(localStorage.getItem('satya_user') || '{}');
+      const userId = user._id || user.id || user.user_id;
+      if (userId) {
+        const alertResponse = await fetch(`http://localhost:5000/api/schemes/deadline-alerts/${userId}?lang=${i18n.language}`);
+        if (alertResponse.ok) {
+          const alertData = await alertResponse.json();
+          setDeadlineAlerts(alertData.alerts || []);
+          setAlertsMessage(alertData.message || '');
+          setLastVerified(alertData.last_verified || null);
+        }
+      }
     } catch (_err) {
       console.error(_err);
       setError(t('ConnectionError', 'Could not connect to server. Ensure backend is running.'));
@@ -47,26 +69,38 @@ const SchemeList = () => {
 
   useEffect(() => { fetchSchemes(); }, [fetchSchemes]);
 
+  // Keep open detail modal in sync when language changes
+  useEffect(() => {
+    if (selectedScheme && schemes.length > 0) {
+      const updated = schemes.find(s => (s._id && s._id === selectedScheme._id) || s.name === selectedScheme.name);
+      if (updated && updated !== selectedScheme) {
+        setSelectedScheme(updated);
+      }
+    }
+  }, [schemes, i18n.language]);
+
   const handleFilterChange = (name, value) =>
     setFilters(prev => ({ ...prev, [name]: value }));
 
   const filteredSchemes = schemes.filter(s => {
     const term = searchTerm.toLowerCase();
+    const translatedName = t(s.name, s.name).toLowerCase();
     const matchesSearch = !searchTerm ||
       s.name?.toLowerCase().includes(term) ||
+      translatedName.includes(term) ||
       s.description?.toLowerCase().includes(term);
 
-    const schemeState = s.state || 'All India';
+    const schemeState = s.state || 'Central';
     const matchesState = filters.state === 'All' ||
-      (filters.state === 'All India'
-        ? schemeState === 'All India'
-        : schemeState.toLowerCase() === filters.state.toLowerCase() || schemeState === 'All India');
+      (filters.state === 'Central' || filters.state === 'All India'
+        ? (schemeState === 'Central' || schemeState === 'All India')
+        : (schemeState.toLowerCase() === filters.state.toLowerCase() || schemeState === 'Central' || schemeState === 'All India'));
 
-    const allowedCats = s.rules?.allowed_categories || ['all'];
+    const allowedCats = Array.isArray(s.rules?.allowed_categories) ? s.rules.allowed_categories : ['all'];
     const matchesCategory = filters.category === 'All' ||
       allowedCats.includes('all') || allowedCats.includes(filters.category.toLowerCase());
 
-    const allowedOccs = s.rules?.occupation || ['all'];
+    const allowedOccs = Array.isArray(s.rules?.occupation) ? s.rules.occupation : ['all'];
     const matchesOccupation = filters.occupation === 'All' ||
       allowedOccs.includes('all') || allowedOccs.includes(filters.occupation.toLowerCase());
 
@@ -85,9 +119,15 @@ const SchemeList = () => {
             <span className="gradient-text">{t('GovtSchemesDirectory', 'Schemes Directory')}</span>
           </h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem' }}>
-            {t('BrowseAllSchemes', 'Explore and search through a comprehensive list of all government initiatives.')}
+            {t('BrowseAllSchemes', 'Explore currently verified government schemes and official application information.')}
           </p>
+          {lastVerified && <p style={styles.lastVerified}><ShieldCheck size={14} /> {t('SchemesLastVerified', 'Schemes last verified')}: {formatVerifiedDate(lastVerified)}</p>}
         </div>
+
+        <section className="glass-card" style={styles.alertSection} aria-label={t('YourSchemeDeadlines', 'Your Scheme Deadlines')}>
+          <div style={styles.alertHeading}><div><h3 style={{ margin: 0 }}>{t('YourUpcomingSchemeDeadlines', 'Your Upcoming Scheme Deadlines')}</h3><p style={{ margin: '5px 0 0', color: 'var(--text-muted)', fontSize: '0.88rem' }}>{t('AlertsVerifiedCopy', 'Only active schemes that SATYA has confirmed you are eligible for are shown here.')}</p></div><Calendar size={22} color="var(--primary-color)" /></div>
+          {deadlineAlerts.length ? <div style={styles.alertGrid}>{deadlineAlerts.map(alert => <DeadlineAlert key={alert.id} alert={alert} t={t} onSelect={() => setSelectedScheme(schemes.find(scheme => scheme._id === alert.id) || null)} />)}</div> : <p style={styles.emptyAlert}>{alertsMessage || t('NoUpcomingDeadlines', 'No upcoming deadlines for your eligible schemes.')}</p>}
+        </section>
 
         {/* Filter Bar */}
         <div style={styles.filterBar} className="glass-card">
@@ -184,6 +224,7 @@ const SchemeList = () => {
 // SchemeCard
 // ─────────────────────────────────────────
 const SchemeCard = ({ scheme, t, onSelect }) => {
+  const { i18n } = useTranslation();
   const isCentral = scheme.state === 'All India';
   const isPartial = scheme.status === 'Partially Eligible';
 
@@ -197,7 +238,7 @@ const SchemeCard = ({ scheme, t, onSelect }) => {
               background: isCentral ? 'rgba(79,70,229,0.1)' : 'rgba(16,185,129,0.1)',
               color: isCentral ? 'var(--primary-color)' : 'var(--secondary-color)',
             }}>
-                {isCentral ? t('Central') : t(scheme.state.replace(/\s/g, ''), scheme.state)}
+                {isCentral ? t('Central') : t(scheme.state ? scheme.state.replace(/\s/g, '') : '', scheme.state || '')}
             </span>
             {scheme.match_score !== undefined && (
               <span style={{
@@ -212,8 +253,16 @@ const SchemeCard = ({ scheme, t, onSelect }) => {
           </div>
           {isPartial && <AlertCircle size={16} color="#f59e0b" title={t('PartiallyEligible')} />}
         </div>
-        <h3 style={styles.cardTitle}>{scheme.name}</h3>
-        <p style={styles.cardDesc}>{scheme.description?.substring(0, 110)}...</p>
+        <h3 style={styles.cardTitle}>
+          {scheme.name_translations && scheme.name_translations[i18n.language]
+            ? scheme.name_translations[i18n.language]
+            : t(scheme.name, scheme.name)}
+        </h3>
+        <p style={styles.cardDesc}>
+          {(scheme.description_translations && scheme.description_translations[i18n.language]
+            ? scheme.description_translations[i18n.language]
+            : scheme.description)?.substring(0, 110)}...
+        </p>
         {isPartial && scheme.reasons?.length > 0 && (
           <div style={styles.partialReason}>
             <Info size={12} />
@@ -222,8 +271,13 @@ const SchemeCard = ({ scheme, t, onSelect }) => {
         )}
         <div style={styles.beneficiaries}>
           <Target size={14} />
-          <span>{scheme.target_beneficiaries?.substring(0, 40)}</span>
+          <span>
+            {(scheme.target_beneficiaries_translations && scheme.target_beneficiaries_translations[i18n.language]
+              ? scheme.target_beneficiaries_translations[i18n.language]
+              : t(scheme.target_beneficiaries?.substring(0, 40), scheme.target_beneficiaries?.substring(0, 40)))?.substring(0, 40)}
+          </span>
         </div>
+        {scheme.application_deadline && scheme.deadline_status === 'fixed' && <DeadlineBadge deadline={scheme.application_deadline} t={t} />}
       </div>
       <div style={styles.cardFooter}>
         <button type="button" className="btn-secondary" style={styles.vBtn} onClick={() => onSelect(scheme)}>
@@ -232,6 +286,139 @@ const SchemeCard = ({ scheme, t, onSelect }) => {
       </div>
     </div>
   );
+};
+
+const DeadlineAlert = ({ alert, t, onSelect }) => {
+  const days = alert.days !== undefined ? alert.days : alert.days_remaining;
+  const urgency = (alert.urgency || alert.level || '').toLowerCase();
+  const badgeKey = urgency === 'apply_soon' ? 'apply_soon' : (urgency === 'urgent' ? 'urgent' : (urgency === 'today' ? 'today' : 'upcoming'));
+  const badgeLabel = t(badgeKey, alert.label || alert.urgency || alert.level || 'Upcoming');
+  const localizedSchemeName = t(alert.name, alert.name);
+
+  const renderDeadlineText = () => {
+    if (days !== undefined && days !== null) {
+      if (days === 0) {
+        return t('DeadlineToday', 'Deadline today');
+      }
+      if (urgency === 'urgent' || urgency === 'apply_soon' || days <= 14) {
+        return t('ApplicationDeadlineApproaching', 'Application deadline approaching: {{days}} days remaining to apply for this scheme.', { days });
+      }
+      return t('ApplicationDeadlineDaysAway', '{{name}} application deadline is {{days}} days away.', { name: localizedSchemeName, days });
+    }
+    return t(alert.message, alert.message);
+  };
+
+  return (
+    <div style={{
+      ...styles.alertCard,
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100%',
+      boxSizing: 'border-box',
+      overflow: 'hidden',
+      minWidth: 0
+    }}>
+      <div style={{ paddingBottom: '10px', flex: 1, minWidth: 0, width: '100%' }}>
+        <span style={{ ...styles.deadlineLevel, ...deadlineLevelStyle(alert.urgency || alert.level) }}>
+          {badgeLabel}
+        </span>
+        <h4 style={{ margin: '8px 0 5px', color: 'var(--text-dark)', wordBreak: 'break-word', lineHeight: 1.35 }}>
+          {localizedSchemeName}
+        </h4>
+        <p style={{ margin: '4px 0 6px', color: 'var(--text-dark)', fontSize: '0.90rem', fontWeight: 500, wordBreak: 'break-word', lineHeight: 1.45 }}>
+          {renderDeadlineText()}
+        </p>
+        {alert.eligibility_reason && (
+          <p style={{ margin: '0 0 8px', color: 'var(--primary-color)', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '4px', wordBreak: 'break-word' }}>
+            <CheckCircle size={12} style={{ flexShrink: 0 }} /> {t('EligibleBasedOnVerifiedProfile', 'You are eligible for this scheme based on your verified profile.')}
+          </p>
+        )}
+        <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <Calendar size={14} style={{ flexShrink: 0 }} /> {t('Deadline', 'Deadline')}: {formatDeadline(alert.application_deadline)}
+        </p>
+      </div>
+    <div style={{
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: '8px',
+      marginTop: 'auto',
+      paddingTop: '10px',
+      borderTop: '1px solid #e2e8f0',
+      width: '100%',
+      boxSizing: 'border-box'
+    }}>
+      <button
+        type="button"
+        style={{
+          flex: '1 1 120px',
+          minWidth: 0,
+          padding: '9px 12px',
+          background: 'rgba(79, 70, 229, 0.08)',
+          color: 'var(--primary-color)',
+          border: '1px solid rgba(79, 70, 229, 0.2)',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          fontWeight: 700,
+          fontSize: '0.82rem',
+          textAlign: 'center',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '4px',
+          whiteSpace: 'normal',
+          wordBreak: 'break-word',
+          lineHeight: 1.25,
+          boxSizing: 'border-box'
+        }}
+        onClick={onSelect}
+      >
+        {t('ViewScheme', 'View Scheme')}
+      </button>
+      {(alert.official_application_url || alert.official_website) && (alert.official_application_url !== 'NA' || alert.official_website !== 'NA') && (
+        <a 
+          href={formatUrl(alert.official_application_url && alert.official_application_url !== 'NA' ? alert.official_application_url : alert.official_website)} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          style={{
+            flex: '1 1 120px',
+            minWidth: 0,
+            padding: '9px 12px',
+            background: 'var(--primary-color)',
+            color: 'white',
+            border: '1px solid var(--primary-color)',
+            borderRadius: '8px',
+            fontWeight: 700,
+            fontSize: '0.82rem',
+            textAlign: 'center',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '4px',
+            textDecoration: 'none',
+            boxSizing: 'border-box',
+            whiteSpace: 'normal',
+            wordBreak: 'break-word',
+            lineHeight: 1.25
+          }}
+        >
+          {t('ApplyNow', 'Apply Now')} <ExternalLink size={13} style={{ flexShrink: 0 }} />
+        </a>
+      )}
+    </div>
+  </div>
+  );
+};
+
+const deadlineLevelStyle = (level) => ({
+  background: level === 'urgent' || level === 'today' ? 'rgba(239,68,68,0.1)' : level === 'apply_soon' ? 'rgba(245,158,11,0.12)' : 'rgba(16,185,129,0.1)',
+  color: level === 'urgent' || level === 'today' ? '#dc2626' : level === 'apply_soon' ? '#b45309' : '#047857',
+});
+
+const DeadlineBadge = ({ deadline, t }) => {
+  const daysRemaining = Math.ceil((new Date(`${deadline}T00:00:00`) - new Date(new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })) ) / 86400000);
+  if (daysRemaining < 0) return null;
+  const label = daysRemaining === 0 ? t('DeadlineToday', 'Deadline today') : `${daysRemaining} ${t('DaysRemaining', 'days remaining')}`;
+  return <div style={styles.deadlineBadge}><Calendar size={14} /><span>{t('Deadline', 'Deadline')}: {formatDeadline(deadline)}</span><strong>{label}</strong></div>;
 };
 
 // ─────────────────────────────────────────
@@ -258,6 +445,14 @@ const formatLastUpdated = (dateStr) => {
   } catch {
     return 'March 2026';
   }
+};
+
+const formatDeadline = (dateStr) => {
+  try { return new Date(`${dateStr}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }); } catch { return dateStr; }
+};
+
+const formatVerifiedDate = (dateStr) => {
+  try { return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }); } catch { return ''; }
 };
 
 // ─────────────────────────────────────────
@@ -372,11 +567,16 @@ const getSchemeType = (description = '', t) => {
 // SchemeDetailModal  — full government-portal UI
 // ─────────────────────────────────────────
 const SchemeDetailModal = ({ scheme, onClose, t }) => {
+  const { i18n } = useTranslation();
+  const [localizedSteps, setLocalizedSteps] = useState(null);
+  const schemeName = (scheme.name_translations && scheme.name_translations[i18n.language]) || scheme.name;
+  const schemeDesc = (scheme.description_translations && scheme.description_translations[i18n.language]) || scheme.description;
+  const schemeTarget = (scheme.target_beneficiaries_translations && scheme.target_beneficiaries_translations[i18n.language]) || scheme.target_beneficiaries;
+  const schemeBenefits = (scheme.benefits_translations && scheme.benefits_translations[i18n.language]) || scheme.benefits;
   const schemeType = getSchemeType(scheme.description, t);
-  const steps      = formatSteps(scheme.steps);
-
-  /** Default 7-step process shown when scheme has no steps data */
-  const defaultSteps = [
+  const schemeSteps = formatSteps(scheme.steps);
+  const hasSchemeSteps = schemeSteps.length > 0;
+  const sourceSteps = hasSchemeSteps ? schemeSteps : [
     t('Step1', 'Visit the official government portal or nearest Common Service Centre (CSC).'),
     t('Step2', 'Search and select this scheme from the scheme list.'),
     t('Step3', 'Enter your Aadhaar number and verify identity via OTP.'),
@@ -385,7 +585,46 @@ const SchemeDetailModal = ({ scheme, onClose, t }) => {
     t('Step6', 'Submit the form and note your Application Reference Number.'),
     t('Step7', 'Track application status using Reference Number or Aadhaar on the official portal.'),
   ];
-  const finalSteps = steps.length > 0 ? steps : defaultSteps;
+  const sourceStepsKey = JSON.stringify(sourceSteps);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!hasSchemeSteps || i18n.language === 'en') return () => { cancelled = true; };
+
+    const currentSteps = formatSteps(scheme.steps);
+    const stepsToTranslate = currentSteps;
+    const currentStepsKey = JSON.stringify(stepsToTranslate);
+
+    fetch('http://localhost:5000/api/localization/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lang: i18n.language, texts: stepsToTranslate, mode: 'scheme_steps' }),
+    })
+      .then(response => {
+        if (!response.ok) throw new Error('Failed to translate application steps');
+        return response.json();
+      })
+      .then(({ translations = {} }) => {
+        if (!cancelled) {
+          setLocalizedSteps({
+            language: i18n.language,
+            sourceKey: currentStepsKey,
+            steps: stepsToTranslate.map(step => translations[step] || step),
+          });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLocalizedSteps({ language: i18n.language, sourceKey: currentStepsKey, steps: stepsToTranslate });
+        }
+      });
+
+    return () => { cancelled = true; };
+  }, [scheme._id, scheme.steps, hasSchemeSteps, i18n.language]);
+
+  const finalSteps = localizedSteps?.language === i18n.language && localizedSteps.sourceKey === sourceStepsKey
+    ? localizedSteps.steps
+    : sourceSteps;
 
   return (
     <div style={modal.overlay} onClick={onClose}>
@@ -408,7 +647,7 @@ const SchemeDetailModal = ({ scheme, onClose, t }) => {
                   </span>
                   <span style={{ ...modal.statusBadge, background: 'rgba(245,158,11,0.1)', color: '#b45309' }}>
                     <MapPin size={11} style={{ display: 'inline', marginRight: '3px' }} />
-                    {scheme.state === 'All India' ? t('CentralScheme') : t(scheme.state.replace(/\s/g, ''), scheme.state)}
+                    {scheme.state === 'All India' ? t('CentralScheme') : t(scheme.state ? scheme.state.replace(/\s/g, '') : '', scheme.state || '')}
                   </span>
                   <span style={{ ...modal.statusBadge, background: 'rgba(100,116,139,0.08)', color: '#475569', border: '1px solid rgba(100,116,139,0.18)' }}>
                     <Calendar size={11} style={{ display: 'inline', marginRight: '3px' }} />
@@ -418,12 +657,12 @@ const SchemeDetailModal = ({ scheme, onClose, t }) => {
 
                 {/* Scheme name */}
                 <h2 style={{ fontSize: '1.45rem', fontWeight: 900, color: '#0f172a', lineHeight: 1.25, margin: 0 }}>
-                  {scheme.name}
+                  {schemeName}
                 </h2>
 
                 {/* Short tagline */}
                 <p style={{ margin: '8px 0 0', fontSize: '0.92rem', color: 'var(--text-muted)', lineHeight: 1.55 }}>
-                  {scheme.description?.substring(0, 130)}...
+                  {schemeDesc?.substring(0, 130)}...
                 </p>
               </div>
 
@@ -446,13 +685,13 @@ const SchemeDetailModal = ({ scheme, onClose, t }) => {
               title={t('SchemeOverview', 'Scheme Overview')}
             >
               <p style={{ color: '#334155', lineHeight: 1.85, fontSize: '0.95rem', margin: 0 }}>
-                {scheme.description || t('NoDescription')}
+                {schemeDesc || t('NoDescription')}
               </p>
-              {scheme.target_beneficiaries && (
+              {schemeTarget && (
                 <div style={{ marginTop: '12px', padding: '10px 14px', background: '#f0fdf4', borderRadius: '10px', border: '1px solid #bbf7d0' }}>
                   <p style={{ margin: 0, fontSize: '0.85rem', color: '#166534', fontWeight: 600 }}>
                     🎯 {t('TargetBeneficiaries', 'Target Beneficiaries')}:{' '}
-                    <span style={{ fontWeight: 400 }}>{scheme.target_beneficiaries?.substring(0, 220)}</span>
+                    <span style={{ fontWeight: 400 }}>{schemeTarget?.substring(0, 220)}</span>
                   </p>
                 </div>
               )}
@@ -466,7 +705,7 @@ const SchemeDetailModal = ({ scheme, onClose, t }) => {
               title={t('KeyBenefits', 'Key Benefits')}
             >
               <BulletList
-                text={scheme.benefits || t('BenefitsDefault')}
+                text={schemeBenefits || t('BenefitsDefault')}
                 highlightValues={true}
               />
             </SectionCard>
@@ -478,7 +717,7 @@ const SchemeDetailModal = ({ scheme, onClose, t }) => {
               accentBg="rgba(168,85,247,0.05)"
               title={t('EligibilityCriteria', 'Eligibility Criteria')}
             >
-              <BulletList text={scheme.target_beneficiaries} highlightValues={true} />
+              <BulletList text={schemeTarget} highlightValues={true} />
 
               {/* Rule chips — income / age / category */}
               {scheme.rules && (
@@ -512,7 +751,7 @@ const SchemeDetailModal = ({ scheme, onClose, t }) => {
             >
               {[
                 { icon: '🆔', text: t('AadhaarCard', 'Aadhaar Card'),                           required: true  },
-                { icon: '📄', text: t('IncomeCertificate', 'Income Certificate'),               required: false },
+                { icon: '📄', text: t('IncomeCert', 'Income Certificate'),                     required: false },
                 { icon: '📍', text: t('AddressProof', 'Address / Domicile Proof'),              required: true  },
                 { icon: '🏦', text: t('BankDetails', 'Bank Account Details (Linked to Aadhaar)'), required: true },
                 { icon: '📋', text: t('SchemeSpecificDocs', 'Scheme-specific certificates (if any)'), required: false },
@@ -639,9 +878,9 @@ const SchemeDetailModal = ({ scheme, onClose, t }) => {
               {t('VisitOfficialPortal', 'Visit the official government portal to start your application.')}
             </p>
           </div>
-          {scheme.official_website && scheme.official_website !== 'NA' ? (
+          {(scheme.official_application_url || scheme.official_website) && (scheme.official_application_url || scheme.official_website) !== 'NA' ? (
             <a
-              href={formatUrl(scheme.official_website)}
+              href={formatUrl(scheme.official_application_url || scheme.official_website)}
               target="_blank"
               rel="noopener noreferrer"
               style={modal.applyBtn}
@@ -668,6 +907,14 @@ const SchemeDetailModal = ({ scheme, onClose, t }) => {
 const styles = {
   container:     { padding: '40px 0' },
   header:        { textAlign: 'center', marginBottom: '40px' },
+  lastVerified:  { display: 'inline-flex', alignItems: 'center', gap: '6px', margin: '12px 0 0', color: '#047857', fontSize: '0.82rem', fontWeight: 600 },
+  alertSection:  { maxWidth: '1000px', margin: '0 auto 25px', padding: '20px 24px' },
+  alertHeading:  { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '15px' },
+  alertGrid:     { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: '14px' },
+  alertCard:     { border: '1px solid #dbeafe', background: '#f8fbff', padding: '16px', borderRadius: '12px', minWidth: 0, overflow: 'hidden', boxSizing: 'border-box' },
+  deadlineLevel: { display: 'inline-flex', borderRadius: '20px', padding: '3px 8px', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase' },
+  alertViewBtn:  { display: 'inline-flex', alignItems: 'center', gap: '3px', border: 'none', background: 'transparent', color: 'var(--primary-color)', cursor: 'pointer', fontWeight: 700, whiteSpace: 'normal', wordBreak: 'break-word', textAlign: 'center' },
+  emptyAlert:    { margin: 0, padding: '12px 0 2px', color: 'var(--text-muted)', fontSize: '0.9rem' },
   filterBar:     { maxWidth: '1000px', margin: '0 auto 20px auto', padding: '10px 10px 10px 25px', display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap', background: 'white' },
   searchSection: { display: 'flex', alignItems: 'center', gap: '15px', flex: 1, minWidth: '300px' },
   searchIcon:    { flexShrink: 0 },
@@ -685,6 +932,7 @@ const styles = {
   cardTitle:     { fontSize: '1.25rem', fontWeight: 700, marginBottom: '15px', color: 'var(--primary-color)', lineHeight: 1.3 },
   cardDesc:      { color: 'var(--text-muted)', fontSize: '0.95rem', marginBottom: '20px', lineHeight: 1.6 },
   beneficiaries: { display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981', fontSize: '0.8rem', fontWeight: 600 },
+  deadlineBadge: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px', marginTop: '14px', padding: '8px 10px', borderRadius: '8px', background: 'rgba(245,158,11,0.09)', color: '#92400e', fontSize: '0.78rem' },
   partialReason: { display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(245,158,11,0.05)', color: '#d97706', padding: '8px 12px', borderRadius: '8px', fontSize: '0.8rem', marginBottom: '15px' },
   cardFooter:    { padding: '20px 30px', borderTop: '1px solid #f1f5f9' },
   vBtn:          { width: '100%', padding: '12px', textAlign: 'center', fontWeight: 700 },

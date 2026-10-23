@@ -1,144 +1,68 @@
-from flask import Blueprint, request, jsonify
-from database import get_db
+from flask import Blueprint, jsonify, request
 from bson import ObjectId
-from .translator_utils import translate_from_english
-from datetime import datetime
+import json
+import os
+import re
+import datetime
+from pymongo import MongoClient
+from .translator_utils import SUPPORTED_LANGUAGES, translate_batch_from_english
+
+# Database connection helper
+def get_db():
+    client = MongoClient(os.getenv("MONGO_URI", "mongodb://localhost:27017/"))
+    return client["Satya"]
 
 schemes_bp = Blueprint('schemes', __name__)
 
-def calculate_age(dob_str):
-    if not dob_str:
-        return 0
-    try:
-        # Normalize date format
-        dob_str = str(dob_str).strip()
-        if '-' in dob_str:
-            # Check for YYYY-MM-DD
-            if dob_str.count('-') == 2:
-                parts = dob_str.split('-')
-                if len(parts[0]) == 4: # YYYY-MM-DD
-                    dob = datetime.strptime(dob_str, "%Y-%m-%d")
-                else: # DD-MM-YYYY
-                    dob = datetime.strptime(dob_str, "%d-%m-%Y")
-            else:
-                 return 0
-        elif '/' in dob_str:
-             # Check for DD/MM/YYYY
-             dob = datetime.strptime(dob_str, "%d/%m/%Y")
-        elif len(dob_str) == 4 and dob_str.isdigit():
-             # Just year
-             return datetime.today().year - int(dob_str)
-        else:
-             return 0
-             
-        today = datetime.today()
-        return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
-    except Exception:
-        return 0
-
 def translate_scheme(scheme, target_lang):
-    if not target_lang or target_lang == 'en':
+    if not scheme or target_lang not in SUPPORTED_LANGUAGES or target_lang == 'en':
         return scheme
-    
-    fields_to_translate = ['name', 'description', 'target_beneficiaries', 'application_process', 'benefits', 'steps']
-    for field in fields_to_translate:
-        if field in scheme and scheme[field]:
-            scheme[field] = translate_from_english(scheme[field], target_lang)
-    
-    # Translate rules if present
-    if 'rules' in scheme and scheme['rules']:
-        rules = scheme['rules']
-        # Categories translation
-        if 'allowed_categories' in rules and isinstance(rules['allowed_categories'], list):
-            if 'all' in rules['allowed_categories']:
-                rules['allowed_categories'] = [translate_from_english("All Categories", target_lang)]
-            else:
-                rules['allowed_categories'] = [translate_from_english(cat.upper() if len(cat) <= 3 else cat.title(), target_lang) for cat in rules['allowed_categories']]
-        
-        # Gender translation
-        if 'gender' in rules and isinstance(rules['gender'], list):
-            if 'all' in rules['gender']:
-                rules['gender'] = [translate_from_english("All", target_lang)]
-            else:
-                rules['gender'] = [translate_from_english(g.title(), target_lang) for g in rules['gender']]
-                
-        # Special category translation
-        if 'special_category' in rules and isinstance(rules['special_category'], list):
-            if 'all' in rules['special_category']:
-                rules['special_category'] = [translate_from_english("None", target_lang)]
-            else:
-                rules['special_category'] = [translate_from_english(sc.replace('_', ' ').title(), target_lang) for sc in rules['special_category']]
 
-    # Translate state if it's not "All India"
-    if 'state' in scheme and scheme['state'] and scheme['state'] != 'All India':
-        scheme['state'] = translate_from_english(scheme['state'], target_lang)
-    
+    # 1. Direct dictionary mappings
+    for field, dict_key in [
+        ('name', 'name_translations'),
+        ('description', 'description_translations'),
+        ('benefits', 'benefits_translations'),
+        ('target_beneficiaries', 'target_beneficiaries_translations'),
+    ]:
+        trans_dict = scheme.get(dict_key)
+        if isinstance(trans_dict, dict) and trans_dict.get(target_lang):
+            scheme[field] = trans_dict[target_lang]
+
+    # 2. Batch fallback for any remaining untranslated fields
+    fields = ('name', 'description', 'benefits', 'target_beneficiaries', 'how_to_apply')
+    pending_fields = []
+    source_values = []
+    for field in fields:
+        dict_key = f"{field}_translations"
+        if isinstance(scheme.get(dict_key), dict) and scheme[dict_key].get(target_lang):
+            continue
+        val = scheme.get(field)
+        if isinstance(val, str) and val.strip():
+            pending_fields.append(field)
+            source_values.append(val)
+
+    if source_values:
+        translated_values = translate_batch_from_english(source_values, target_lang)
+        for field, trans in zip(pending_fields, translated_values):
+            scheme[field] = trans
     return scheme
 
 def translate_schemes_in_batch(schemes, target_lang):
-    if not target_lang or target_lang == 'en' or not schemes:
+    if not schemes or target_lang not in SUPPORTED_LANGUAGES or target_lang == 'en':
         return schemes
-    
-    from .translator_utils import translate_batch_from_english
-    
-    # 1. Collect all strings to translate
-    strings_to_translate = []
-    text_fields = ['name', 'description', 'target_beneficiaries', 'application_process', 'benefits', 'steps', 'state']
-    
-    for s in schemes:
-        for field in text_fields:
-            if field in s and s[field]:
-                strings_to_translate.append(s[field])
-        
-        # Rules (Categories, Gender, Special Category)
-        if 'rules' in s and s['rules']:
-            r = s['rules']
-            if 'allowed_categories' in r and isinstance(r['allowed_categories'], list):
-                if 'all' in r['allowed_categories']: strings_to_translate.append("All Categories")
-                else: 
-                    strings_to_translate.extend([cat.upper() if len(cat) <= 3 else cat.title() for cat in r['allowed_categories']])
-            
-            if 'gender' in r and isinstance(r['gender'], list):
-                if 'all' in r['gender']: strings_to_translate.append("All")
-                else: strings_to_translate.extend([g.title() for g in r['gender']])
-                
-            if 'special_category' in r and isinstance(r['special_category'], list):
-                if 'all' in r['special_category']: strings_to_translate.append("None")
-                else: strings_to_translate.extend([sc.replace('_', ' ').title() for sc in r['special_category']])
-                
-            if 'state' in r and isinstance(r['state'], list):
-                if 'all' in [st.lower() for st in r['state']]: strings_to_translate.append("All India")
-                else: strings_to_translate.extend([st.replace('_', ' ').title() for st in r['state']])
 
-    # 2. Batch Translate
-    translated_list = translate_batch_from_english(strings_to_translate, target_lang)
-    trans_map = dict(zip(strings_to_translate, translated_list))
-
-    # 3. Apply back to schemes
-    for s in schemes:
-        for field in text_fields:
-            if field in s and s[field] in trans_map:
-                s[field] = trans_map[s[field]]
-        
-        if 'rules' in s and s['rules']:
-            r = s['rules']
-            if 'allowed_categories' in r and isinstance(r['allowed_categories'], list):
-                if 'all' in r['allowed_categories']:
-                    r['allowed_categories'] = [trans_map.get("All Categories", "All Categories")]
-                else:
-                    r['allowed_categories'] = [trans_map.get(cat.upper() if len(cat) <= 3 else cat.title(), cat) for cat in r['allowed_categories']]
-            
-            if 'gender' in r and isinstance(r['gender'], list):
-                if 'all' in r['gender']: r['gender'] = [trans_map.get("All", "All")]
-                else: r['gender'] = [trans_map.get(g.title(), g) for g in r['gender']]
-                
-            if 'special_category' in r and isinstance(r['special_category'], list):
-                if 'all' in r['special_category']: r['special_category'] = [trans_map.get("None", "None")]
-                else: r['special_category'] = [trans_map.get(sc.replace('_', ' ').title(), sc) for sc in r['special_category']]
-                
-            if 'state' in r and isinstance(r['state'], list):
-                if 'all' in [st.lower() for st in r['state']]: r['state'] = [trans_map.get("All India", "All India")]
-                else: r['state'] = [trans_map.get(st.replace('_', ' ').title(), st) for st in r['state']]
+    for scheme in schemes:
+        # Apply pre-translated fields directly from MongoDB document
+        for field, dict_key in [
+            ('name', 'name_translations'),
+            ('description', 'description_translations'),
+            ('benefits', 'benefits_translations'),
+            ('target_beneficiaries', 'target_beneficiaries_translations'),
+        ]:
+            trans_dict = scheme.get(dict_key)
+            if isinstance(trans_dict, dict) and trans_dict.get(target_lang):
+                scheme[field] = trans_dict[target_lang]
 
     return schemes
 
@@ -146,9 +70,8 @@ def translate_schemes_in_batch(schemes, target_lang):
 def get_all_schemes():
     db = get_db()
     lang = request.args.get('lang', 'en')
-    schemes = list(db.schemes.find({}))
+    schemes = list(db.schemes.find({"status": "active", "is_active": True}))
     
-    # Convert ObjectIds to strings
     for scheme in schemes:
         scheme["_id"] = str(scheme["_id"])
         
@@ -157,12 +80,22 @@ def get_all_schemes():
         
     return jsonify(schemes), 200
 
+@schemes_bp.route('/meta', methods=['GET'])
+def get_scheme_directory_metadata():
+    db = get_db()
+    latest = db.schemes.find_one(
+        {"status": "active", "is_active": True, "last_verified": {"$exists": True}},
+        {"last_verified": 1},
+        sort=[("last_verified", -1)],
+    )
+    return jsonify({"last_verified": latest.get("last_verified") if latest else None}), 200
+
 @schemes_bp.route('/<scheme_id>', methods=['GET'])
 def get_scheme(scheme_id):
     db = get_db()
     lang = request.args.get('lang', 'en')
     try:
-        scheme = db.schemes.find_one({"_id": ObjectId(scheme_id)})
+        scheme = db.schemes.find_one({"_id": ObjectId(scheme_id), "status": "active", "is_active": True})
         if not scheme:
             return jsonify({"error": "Scheme not found"}), 404
         scheme["_id"] = str(scheme["_id"])
@@ -171,78 +104,65 @@ def get_scheme(scheme_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
-def calculate_eligible_schemes_internal(data, db):
-    lang = data.get("lang", "en")
-    
-    # --- 1. Utility: Normalize Data ---
-    def normalize(val):
-        if val is None: return ""
-        return str(val).lower().strip()
+def calculate_eligible_schemes_internal(profile, db):
+    # Support both flat and nested profile payload attributes
+    dob = profile.get("dob")
+    age = profile.get("age") or 0
+    if not age and dob:
+        try:
+            birth_date = datetime.datetime.strptime(dob, "%Y-%m-%d").date()
+            today = datetime.datetime.utcnow().date()
+            age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+        except Exception:
+            age = 0
+    if not age:
+        age = 25 # fallback default
 
-    # --- 2. Extract & Normalize Profile Data ---
-    age = int(data.get("age", 0)) if data.get("age") else 0
-    if not age and data.get("dob"):
-        age = calculate_age(data.get("dob"))
-        
-    income = int(str(data.get("income", 0)).replace(',', '')) if data.get("income") else 0
-    category = normalize(data.get("category", ""))
-    gender = normalize(data.get("gender", ""))
-    occupation = normalize(data.get("occupation", ""))
-    state = normalize(data.get("state", ""))
-    district = normalize(data.get("district", ""))
-    
-    # New Socio-Economic Fields
-    residence = normalize(data.get("residence", ""))
-    bpl_status = data.get("bpl_status")
-    income_category = normalize(data.get("income_category", ""))
-    ration_card_type = normalize(data.get("ration_card_type", ""))
-    
-    # Education Fields
-    education_level = normalize(data.get("education_level", ""))
-    is_student = data.get("is_student")
-    
-    # Occupation Specifics
-    landholding = float(data.get("landholding_size", 0)) if data.get("landholding_size") else 0
-    employment_type = normalize(data.get("employment_type", ""))
-    business_type = normalize(data.get("business_type", ""))
-    business_turnover = int(data.get("business_turnover", 0)) if data.get("business_turnover") else 0
-    
-    # Special Conditions (Disability, Widow, Minority)
-    is_disabled = data.get("is_disabled")
-    disability_type = normalize(data.get("disability_type", ""))
-    disability_percent = int(data.get("disability_percentage", 0)) if data.get("disability_percentage") else 0
-    certificate_uploaded = data.get("certificate_uploaded", False)
-    is_widow = data.get("is_widow")
-    is_minority = data.get("is_minority")
-    is_single_parent = data.get("is_single_parent")
-    is_senior_citizen = age >= 60
+    income = int(profile.get("income") or 0)
+    category = (profile.get("category") or "").strip().lower()
+    occupation = (profile.get("occupation") or "").strip().lower()
+    state = (profile.get("state") or "").strip().lower()
+    gender = (profile.get("gender") or "").strip().lower()
 
-    # --- 2. Update User Profile in DB ---
-    user_id = data.get("user_id")
+    # Disability - support flat and nested
+    disability_dict = profile.get("disability") if isinstance(profile.get("disability"), dict) else {}
+    is_disabled = profile.get("is_disabled") or profile.get("disabled") or disability_dict.get("disabled") or False
+    disability_percent = profile.get("disability_percentage") or disability_dict.get("percentage") or 0
+    disability_type = (profile.get("disability_type") or disability_dict.get("type") or "").strip().lower()
+    certificate_uploaded = profile.get("certificate_uploaded") or profile.get("has_disability_certificate") or disability_dict.get("certificate_uploaded") or False
+
+    # Special Category - support flat and nested
+    spec_dict = profile.get("special_category") if isinstance(profile.get("special_category"), dict) else {}
+    is_widow = profile.get("is_widow") or profile.get("widow") or spec_dict.get("widow") or False
+    is_minority = profile.get("is_minority") or profile.get("minority") or spec_dict.get("minority") or False
+    is_single_parent = profile.get("is_single_parent") or profile.get("single_parent") or spec_dict.get("single_parent") or False
+
+    user_id = profile.get("user_id") or profile.get("_id")
     if user_id:
         try:
+            if isinstance(user_id, str):
+                user_id = ObjectId(user_id)
             db.users.update_one(
-                {"_id": ObjectId(user_id)},
+                {"_id": user_id},
                 {"$set": {
                     "profile": {
-                        "name": data.get("name"),
+                        "dob": dob,
                         "age": age,
-                        "gender": gender,
-                        "state": state,
-                        "district": district,
                         "income": income,
-                        "occupation": occupation,
                         "category": category,
-                        "residence": residence,
-                        "bpl_status": bpl_status,
-                        "education_level": education_level,
-                        "is_student": is_student,
-                        "landholding": landholding,
-                        "special_conditions": {
-                            "disabled": is_disabled,
-                            "widow": is_widow,
-                            "minority": is_minority,
-                            "single_parent": is_single_parent
+                        "occupation": occupation,
+                        "state": state,
+                        "gender": gender,
+                        "disability": {
+                            "disabled": bool(is_disabled),
+                            "percentage": disability_percent,
+                            "type": disability_type,
+                            "certificate_uploaded": bool(certificate_uploaded)
+                        },
+                        "special_category": {
+                            "widow": bool(is_widow),
+                            "minority": bool(is_minority),
+                            "single_parent": bool(is_single_parent)
                         }
                     }
                 }}
@@ -250,167 +170,293 @@ def calculate_eligible_schemes_internal(data, db):
         except Exception as e:
             print("Error updating profile:", str(e))
 
-    # --- 3. Process Eligibility ---
-    all_schemes = list(db.schemes.find({}))
+    all_schemes = list(db.schemes.find({"status": "active", "is_active": True}))
     eligible_schemes = []
     ineligible_schemes = []
 
     for scheme in all_schemes:
         reasons = []
-        rules = scheme.get("rules", {})
+        rules = scheme.get("rules") or {}
         total_criteria = 0
         matched_criteria = 0
         
         # State Check
-        total_criteria += 1
-        scheme_state = scheme.get("state", "All India")
-        if scheme_state == "All India" or scheme_state.lower() == state:
-            matched_criteria += 1
-        else:
-            reasons.append(f"StateMismatch:{{'state':'{scheme_state}'}}")
+        scheme_state = (scheme.get("state") or "Central").strip()
+        if scheme_state not in ("Central", "All India"):
+            total_criteria += 1
+            if scheme_state.lower() == state or not state:
+                matched_criteria += 1
+            else:
+                reasons.append(f"StateMismatch: scheme is for {scheme_state} state, but your profile state is {state.capitalize() if state else 'Not specified'}")
+
+        # Gender Check
+        if rules.get("gender"):
+            rule_g = rules.get("gender")
+            g_list = [str(g).lower() for g in rule_g] if isinstance(rule_g, list) else [str(rule_g).lower()]
+            if "all" not in g_list:
+                total_criteria += 1
+                if gender in g_list:
+                    matched_criteria += 1
+                else:
+                    reasons.append(f"GenderMismatch: scheme requires {', '.join(g_list).capitalize()}, but your gender is {gender.capitalize() if gender else 'Not specified'}")
 
         # Age Check
-        if "min_age" in rules:
+        min_age_val = rules.get("min_age")
+        if min_age_val is not None:
             total_criteria += 1
-            if age >= rules["min_age"]: matched_criteria += 1
-            else: reasons.append(f"AgeTooLow:{{'userAge':{age}, 'min':{rules['min_age']}}}")
-        if "max_age" in rules:
+            if age >= min_age_val:
+                matched_criteria += 1
+            else:
+                reasons.append(f"AgeTooLow: minimum required age is {min_age_val}, your age is {age}")
+
+        max_age_val = rules.get("max_age")
+        if max_age_val is not None:
             total_criteria += 1
-            if age <= rules["max_age"]: matched_criteria += 1
-            else: reasons.append(f"AgeTooHigh:{{'userAge':{age}, 'max':{rules['max_age']}}}")
+            if age <= max_age_val:
+                matched_criteria += 1
+            else:
+                reasons.append(f"AgeTooHigh: maximum allowed age is {max_age_val}, your age is {age}")
             
         # Income Check
-        if "max_income" in rules:
+        max_inc_val = rules.get("max_income")
+        if max_inc_val is not None:
             total_criteria += 1
-            max_inc = rules["max_income"]
-            if income <= max_inc: matched_criteria += 1
-            else: reasons.append(f"IncomeTooHigh:{{'userIncome':{income}, 'limit':{max_inc}, 'diff':{income - max_inc}}}")
+            if income <= max_inc_val:
+                matched_criteria += 1
+            else:
+                reasons.append(f"IncomeTooHigh: annual family income limit is ₹{max_inc_val:,}, your income is ₹{income:,}")
             
         # Category Check
-        if "allowed_categories" in rules and category: # Skip if user skipped
-            total_criteria += 1
-            allowed = [c.lower() for c in rules["allowed_categories"]]
-            if category in allowed or "all" in allowed: matched_criteria += 1
-            else: reasons.append(f"CategoryMismatch:{{'allowed':'{', '.join(allowed).upper()}'}}")
-            
-        # Occupation Check
-        if "occupation" in rules and occupation: # Skip if user skipped
-            total_criteria += 1
-            allowed_occ = [o.lower() for o in rules["occupation"]]
-            if occupation in allowed_occ or "all" in allowed_occ: matched_criteria += 1
-            else: reasons.append("OccupationMismatch")
+        allowed_cats = rules.get("allowed_categories")
+        if allowed_cats:
+            cats_list = [str(c).lower() for c in allowed_cats] if isinstance(allowed_cats, list) else ["all"]
+            if "all" not in cats_list:
+                total_criteria += 1
+                if category in cats_list:
+                    matched_criteria += 1
+                else:
+                    reasons.append(f"CategoryMismatch: scheme is restricted to {', '.join(cats_list).upper()} category")
 
-        # Disability Logic (Strict)
+        # Occupation Check
+        allowed_occs = rules.get("occupation")
+        if allowed_occs:
+            occs_list = [str(o).lower() for o in allowed_occs] if isinstance(allowed_occs, list) else ["all"]
+            if "all" not in occs_list:
+                total_criteria += 1
+                if occupation in occs_list:
+                    matched_criteria += 1
+                else:
+                    reasons.append(f"OccupationMismatch: scheme applies to {', '.join(occs_list)}")
+
+        # Disability Logic
         if rules.get("disability_required") or "min_disability" in rules:
             total_criteria += 1
             min_d = rules.get("min_disability", 40)
             if is_disabled and disability_percent >= min_d:
                 if not certificate_uploaded:
-                    reasons.append("DisabilityCertificateRequired")
+                    reasons.append("DisabilityCertificateRequired: disability certificate is required for verification")
                 else:
                     matched_criteria += 1
-                    # Soft Type Match
-                    if "disability_type" in rules:
-                        allowed_dt = [dt.lower() for dt in rules["disability_type"]]
-                        if disability_type not in allowed_dt:
-                            reasons.append(f"DisabilityTypeWarning:{{'type':'{', '.join(allowed_dt).title()}'}}")
             else:
-                reasons.append(f"DisabilityLow:{{'userPercent':{disability_percent}, 'min':{min_d}}}")
+                reasons.append(f"DisabilityRequired: minimum {min_d}% disability required")
 
-        # BPL / Ration Card Check
-        if rules.get("bpl_required") and not bpl_status:
+        # Special Category Checks
+        if rules.get("widow_only"):
             total_criteria += 1
-            reasons.append("BPLStatusRequired")
-        elif bpl_status: # If user matches a positive condition
-            matched_criteria += 1
+            if is_widow:
+                matched_criteria += 1
+            else:
+                reasons.append("WidowOnlyScheme: scheme is exclusively for widows")
 
-        # Calculate Score
-        match_score = int((matched_criteria / total_criteria) * 100) if total_criteria > 0 else 100
-        
-        status = "Eligible"
-        if match_score < 100 and match_score >= 50: status = "Partially Eligible"
-        elif match_score < 50: status = "Not Eligible"
+        if rules.get("minority_only"):
+            total_criteria += 1
+            if is_minority:
+                matched_criteria += 1
+            else:
+                reasons.append("MinorityOnlyScheme: scheme is exclusively for minority community members")
 
-        scheme_data = {
-            "id": str(scheme["_id"]),
-            "name": scheme.get("name"),
-            "description": scheme.get("description"),
-            "official_website": scheme.get("official_website"),
-            "target_beneficiaries": scheme.get("target_beneficiaries"),
-            "benefits": scheme.get("benefits"),
-            "steps": scheme.get("steps"),
-            "state": scheme_state,
-            "match_score": match_score,
-            "status": status,
-            "reasons": reasons
-        }
+        if rules.get("single_parent_only"):
+            total_criteria += 1
+            if is_single_parent:
+                matched_criteria += 1
+            else:
+                reasons.append("SingleParentOnlyScheme: scheme is exclusively for single parents")
 
-        if status == "Eligible": eligible_schemes.append(scheme_data)
-        elif status == "Partially Eligible": eligible_schemes.append(scheme_data) # Show partials in main list with tag
-        else: ineligible_schemes.append(scheme_data)
-            
-    # --- 4. Batch Translation ---
-    if lang != 'en':
-        # Translate reasons
-        all_reasons = []
-        for s in eligible_schemes + ineligible_schemes:
-            all_reasons.extend(s["reasons"])
-        
-        # We need to translate reasons too
-        from .translator_utils import translate_batch_from_english
-        translated_reasons = translate_batch_from_english(list(set(all_reasons)), lang)
-        reason_map = dict(zip(list(set(all_reasons)), translated_reasons))
-        
-        for s in eligible_schemes + ineligible_schemes:
-            s["reasons"] = [reason_map.get(r, r) for r in s["reasons"]]
-            
-        translate_schemes_in_batch(eligible_schemes, lang)
-        translate_schemes_in_batch(ineligible_schemes, lang)
+        match_score = (matched_criteria / total_criteria * 100) if total_criteria > 0 else 100.0
+        scheme_id = str(scheme["_id"])
+
+        # Scheme is ELIGIBLE only if NO criteria failed (match_score == 100 or len(reasons) == 0)
+        if len(reasons) == 0:
+            eligible_schemes.append({
+                "id": scheme_id,
+                "scheme_id": scheme_id,
+                "name": scheme.get("name"),
+                "description": scheme.get("description"),
+                "match_score": round(match_score, 1),
+                "reasons": [],
+                "benefits": scheme.get("benefits"),
+                "official_website": scheme.get("official_website"),
+                "official_application_url": scheme.get("official_application_url"),
+                "application_deadline": scheme.get("application_deadline"),
+                "deadline_status": scheme.get("deadline_status", "not_specified"),
+                "state": scheme.get("state", "Central"),
+                "name_translations": scheme.get("name_translations", {}),
+                "description_translations": scheme.get("description_translations", {}),
+                "benefits_translations": scheme.get("benefits_translations", {}),
+                "target_beneficiaries_translations": scheme.get("target_beneficiaries_translations", {}),
+            })
+        else:
+            ineligible_schemes.append({
+                "id": scheme_id,
+                "name": scheme.get("name"),
+                "description": scheme.get("description"),
+                "match_score": round(match_score, 1),
+                "reasons": reasons,
+                "official_website": scheme.get("official_website"),
+                "state": scheme.get("state", "Central"),
+                "name_translations": scheme.get("name_translations", {}),
+                "description_translations": scheme.get("description_translations", {}),
+                "benefits_translations": scheme.get("benefits_translations", {}),
+                "target_beneficiaries_translations": scheme.get("target_beneficiaries_translations", {}),
+            })
 
     return {
         "eligible": eligible_schemes,
-        "ineligible": ineligible_schemes
+        "ineligible": ineligible_schemes,
+        "total_analyzed": len(all_schemes)
     }
 
-@schemes_bp.route('/eligible', methods=['POST'])
-def get_eligible_schemes():
-    data = request.json
+@schemes_bp.route('/check-eligibility', methods=['POST'])
+def check_eligibility():
     db = get_db()
-    result = calculate_eligible_schemes_internal(data, db)
-    return jsonify(result), 200
+    data = request.json or {}
+    lang = data.get('lang') or request.args.get('lang', 'en')
+    results = calculate_eligible_schemes_internal(data, db)
+    if lang != 'en':
+        for item in results.get('eligible', []):
+            translate_scheme(item, lang)
+        for item in results.get('ineligible', []):
+            translate_scheme(item, lang)
+    return jsonify(results), 200
 
-# Admin route to add a scheme
-@schemes_bp.route('/add', methods=['POST'])
-def add_scheme():
+@schemes_bp.route('/deadline-alerts/<user_id>', methods=['GET'])
+def get_personalized_deadline_alerts(user_id):
     db = get_db()
-    data = request.json
-    db.schemes.insert_one(data)
-    return jsonify({"message": "Scheme added successfully"}), 201
-
-# Admin route to update a scheme
-@schemes_bp.route('/update/<scheme_id>', methods=['PUT'])
-def update_scheme(scheme_id):
-    db = get_db()
-    data = request.json
+    lang = request.args.get('lang', 'en')
     try:
-        result = db.schemes.update_one(
-            {"_id": ObjectId(scheme_id)},
-            {"$set": data}
-        )
-        if result.matched_count == 0:
-            return jsonify({"error": "Scheme not found"}), 404
-        return jsonify({"message": "Scheme updated successfully"}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        user = db.users.find_one({"_id": ObjectId(user_id)})
+    except Exception:
+        user = None
 
-# Admin route to delete a scheme
-@schemes_bp.route('/delete/<scheme_id>', methods=['DELETE'])
-def delete_scheme(scheme_id):
-    db = get_db()
-    try:
-        result = db.schemes.delete_one({"_id": ObjectId(scheme_id)})
-        if result.deleted_count == 0:
-            return jsonify({"error": "Scheme not found"}), 404
-        return jsonify({"message": "Scheme deleted successfully"}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 400
+    if not user:
+        return jsonify({
+            "alerts": [],
+            "message": "Verify your Aadhaar and/or required caste certificate in Document Vault to receive personalized eligibility and deadline alerts for applicable schemes."
+        }), 200
+
+    aadhaar_verified = bool(user.get("identity_locked"))
+    caste_verified = bool(user.get("caste_locked"))
+    
+    if not aadhaar_verified:
+        return jsonify({
+            "alerts": [],
+            "message": "Verify your Aadhaar and/or required caste certificate in Document Vault to receive personalized eligibility and deadline alerts for applicable schemes.",
+            "aadhaar_verified": False,
+            "caste_verified": caste_verified
+        }), 200
+
+    profile = user.get("profile", {}) or {}
+    identity_profile = user.get("identity_profile", {}) or {}
+    caste_profile = user.get("caste_identity_profile", {}) or {}
+
+    # Merge verified identity into profile
+    if identity_profile.get("dob"):
+        try:
+            dob_parts = str(identity_profile.get("dob")).split("-")
+            if len(dob_parts) >= 1:
+                birth_year = int(dob_parts[0])
+                profile["age"] = datetime.datetime.now().year - birth_year
+        except Exception:
+            pass
+            
+    if identity_profile.get("gender"):
+        profile["gender"] = identity_profile.get("gender")
+
+    if caste_verified and caste_profile.get("category"):
+        profile["category"] = caste_profile.get("category")
+
+    profile["user_id"] = user_id
+
+    eligibility = calculate_eligible_schemes_internal(profile, db)
+    alerts = []
+    
+    today = datetime.datetime.utcnow().date()
+    
+    for scheme in eligibility.get("eligible", []):
+        deadline_str = scheme.get("application_deadline")
+        status = scheme.get("deadline_status")
+        
+        if not deadline_str or status not in ("fixed", "ongoing"):
+            continue
+            
+        try:
+            deadline_date = datetime.datetime.strptime(deadline_str, "%Y-%m-%d").date()
+            days_remaining = (deadline_date - today).days
+        except Exception:
+            continue
+
+        if days_remaining < 0:
+            continue
+
+        urgency = "upcoming"
+        label = "Upcoming"
+        msg = f"{scheme.get('name')} application deadline is {days_remaining} days away."
+
+        if days_remaining == 0:
+            urgency = "today"
+            label = "Last Day"
+            msg = f"Last day to apply. The application deadline for {scheme.get('name')} is today."
+        elif days_remaining <= 6:
+            urgency = "urgent"
+            label = "Urgent"
+            msg = f"Apply soon \u2014 only {days_remaining} days remain before the application deadline."
+        elif days_remaining <= 14:
+            urgency = "apply_soon"
+            label = "Closing Soon"
+            msg = f"Application deadline approaching: {days_remaining} days remaining to apply for this scheme."
+
+        eligibility_reason = "You are eligible for this scheme based on your verified profile."
+        if caste_verified and profile.get("category") and scheme.get("rules", {}).get("allowed_categories"):
+            eligibility_reason = "Your verified caste category matches the scheme's eligibility requirements."
+
+        # Translate scheme name for alerts
+        localized_name = scheme.get("name")
+        if lang != 'en':
+            name_trans = scheme.get('name_translations', {})
+            if isinstance(name_trans, dict) and lang in name_trans and name_trans[lang]:
+                localized_name = name_trans[lang]
+
+        alerts.append({
+            "id": scheme.get("id"),
+            "name": localized_name,
+            "state": scheme.get("state"),
+            "application_deadline": deadline_str,
+            "days_remaining": days_remaining,
+            "urgency": urgency,
+            "level": urgency,
+            "label": label,
+            "message": msg,
+            "eligibility_reason": eligibility_reason,
+            "official_website": scheme.get("official_website"),
+            "official_application_url": scheme.get("official_application_url"),
+        })
+        
+    alerts.sort(key=lambda x: x["days_remaining"])
+
+    return jsonify({
+        "alerts": alerts,
+        "message": "",
+        "aadhaar_verified": aadhaar_verified,
+        "caste_verified": caste_verified,
+        "total_eligible": len(alerts)
+    }), 200

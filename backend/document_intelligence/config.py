@@ -1,8 +1,7 @@
 from typing import Dict, List
+from language_config import SUPPORTED_LANGUAGE_CODES
 
-SUPPORTED_LANGUAGES: List[str] = [
-    "en", "hi", "mr", "gu", "bn", "ta", "te", "kn", "ml", "pa", "or"
-]
+SUPPORTED_LANGUAGES: List[str] = sorted(SUPPORTED_LANGUAGE_CODES)
 
 CANONICAL_FIELD_KEYS: List[str] = [
     "full_name",

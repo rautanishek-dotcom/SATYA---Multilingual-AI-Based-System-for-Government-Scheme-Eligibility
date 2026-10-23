@@ -172,6 +172,13 @@ const EligibilityForm = () => {
       const data = await response.json();
       if (data.status === 'Verified' || data.status === 'Partially Verified') {
         setCertVerified(true);
+        setFormData(prev => ({
+          ...prev,
+          is_disabled: true,
+          has_disability_certificate: true,
+          disability_type: data.extracted?.disability_type || prev.disability_type,
+          disability_percentage: data.extracted?.percentage || prev.disability_percentage,
+        }));
       } else if (data.error) {
           setCertError(data.error);
       }
@@ -205,22 +212,58 @@ const EligibilityForm = () => {
     return data;
   };
 
-  const handleSendOTP = async () => {
+  const getApiUrl = (path) => {
+    // Return absolute URL using current host or fallback to 5000
+    const host = window.location.hostname || 'localhost';
+    return `http://${host}:5000${path}`;
+  };
+
+  const handleVerifyIdentityFirst = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const status = await fetchOtpStatus();
-      if (status.verified) {
-        setIsMobileVerified(true);
-        setShowOTPModal(false);
-        return;
+      const payload = { ...formData, user_id: userId, lang: i18n.language, certificate_uploaded: certVerified };
+      const response = await fetch(getApiUrl('/api/eligibility/verify'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || t('ServerConnectionError', "Failed to connect to government servers"));
       }
 
-      if (status.active && !status.verified) {
-        setShowOTPModal(true);
-        return;
+      const data = await response.json();
+      
+      if (!data.identity_verified) {
+         setIsVerified(false);
+         setResults(null);
+         setMatchBreakdown(data.match_breakdown || null);
+         setError(data.reason || "Identity verification failed.");
+         setShowVerification(true);
+         setCurrentStep(11);
+         setLoading(false);
+         return;
       }
+      
+      // Identity matched successfully! Start a fresh OTP session for schemes.
+      await handleSendOTP();
+    } catch (err) {
+       setError(err.message);
+       setCurrentStep(11);
+       setLoading(false);
+    }
+  };
 
+  const handleSendOTP = async (forceNew = false) => {
+    setLoading(true);
+    setError(null);
+    setShowVerification(false);
+    try {
       const token = localStorage.getItem('satya_token');
-      const res = await fetch('http://localhost:5000/api/otp/send', {
+      const endpoint = forceNew ? '/api/otp/resend' : '/api/otp/send';
+      const res = await fetch(getApiUrl(endpoint), {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -229,50 +272,36 @@ const EligibilityForm = () => {
         body: JSON.stringify({ purpose: 'eligibility_check' })
       });
       
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      setLoading(false);
       if (res.ok) {
         setShowOTPModal(true);
       } else {
-        setError(data.error || 'Could not send OTP.');
+        const msg = data.error || 'Could not send OTP. Please try again.';
+        setError(msg);
+        setShowVerification(true);
       }
-    } catch {
+    } catch (err) {
+      setLoading(false);
       setError('Network Error: Could not reach server to send OTP.');
+      setShowVerification(true);
     }
   };
 
   const handleOTPVerified = async (otpCode) => {
-    setIsMobileVerified(true);
-    setShowOTPModal(false);
-    
-    // Now trigger the actual eligibility verification with the OTP code
-    handleSubmit(null, false, otpCode);
+    // Keep the modal open until the OTP-protected request succeeds. If the
+    // backend rejects the code, the modal can show the error and accept a retry.
+    setCurrentStep(11);
+    setError(null);
+    const verified = await handleSubmit(null, false, otpCode);
+    if (verified) {
+      setIsMobileVerified(true);
+      setShowOTPModal(false);
+    }
   };
 
   const handleSubmit = async (e, isAutoRefresh = false, otpCode = null) => {
-    if (e) e.preventDefault();
-    if (!formData.declaration_accepted) return;
-    
-    // If not auto-refreshing and OTP not yet verified/provided, we need to send OTP first.
-    // In our new flow, they click "Check Eligibility", we send OTP, show modal, 
-    // then on success, we call handleSubmit again with otpCode.
-    if (!isAutoRefresh && !otpCode) {
-      try {
-        const status = await fetchOtpStatus();
-        if (status.verified) {
-          setIsMobileVerified(true);
-          return handleSubmit(null, true, null);
-        }
-        if (status.active && !status.verified) {
-          setShowOTPModal(true);
-          return;
-        }
-      } catch {
-        // Fall back to generating a fresh OTP below.
-      }
-
-      handleSendOTP();
-      return;
-    }
+    if (e && e.preventDefault) e.preventDefault();
     
     if (!isAutoRefresh) setLoading(true);
     setError(null);
@@ -282,12 +311,12 @@ const EligibilityForm = () => {
         ...formData, 
         user_id: userId, 
         lang: i18n.language,
-        certificate_uploaded: true, // Mark as uploaded because they have verified documents in vault
-        otp_code: otpCode // Include the OTP code
+        certificate_uploaded: certVerified,
+        otp_code: otpCode
       };
       
-      const endpoint = otpCode ? '/verify-with-otp' : '/verify';
-      const response = await fetch(`http://localhost:5000/api/eligibility${endpoint}`, {
+      const endpoint = otpCode ? '/api/eligibility/verify-with-otp' : '/api/eligibility/verify';
+      const response = await fetch(getApiUrl(endpoint), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -310,18 +339,21 @@ const EligibilityForm = () => {
           setCurrentStep(11);
         }
         setLoading(false);
-        return;
+        return false;
       }
       
       setIsVerified(true);
-      setResults(data.eligible_schemes);
+      setResults(data.eligible_schemes || { eligible: [], ineligible: [] });
       setMatchBreakdown(data.match_breakdown || null);
       if (!isAutoRefresh) setShowVerification(false); // don't show vault notice
       if (!isAutoRefresh) setCurrentStep(11);
+      return true;
     } catch (err) {
       console.error("Error fetching eligible schemes:", err);
       setError(err.message);
       if (!isAutoRefresh) setCurrentStep(11);
+      if (otpCode) throw err;
+      return false;
     } finally {
       if (!isAutoRefresh) setLoading(false);
     }
@@ -339,38 +371,40 @@ const EligibilityForm = () => {
                
                {matchBreakdown && (
                  <div style={{ marginTop: '20px', padding: '16px', background: 'rgba(239, 68, 68, 0.05)', borderRadius: '12px', width: '100%', maxWidth: '400px', border: '1px solid rgba(239, 68, 68, 0.1)' }}>
-                   <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#7f1d1d' }}>Identity Match Details</h4>
+                   <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#7f1d1d' }}>{t('IdentityMatchDetails', 'Identity Match Details')}</h4>
                    <div style={{ display: 'grid', gap: '8px', fontSize: '13px' }}>
                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                       <span style={{ color: '#475569' }}>Name Match:</span>
+                       <span style={{ color: '#475569' }}>{t('NameMatch', 'Name Match')}:</span>
                        <span style={{ fontWeight: 600 }}>{matchBreakdown.name?.similarity}%</span>
                      </div>
                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                       <span style={{ color: '#475569' }}>DOB Match:</span>
+                       <span style={{ color: '#475569' }}>{t('DOBMatch', 'DOB Match')}:</span>
                        <span style={{ fontWeight: 600, color: matchBreakdown.dob?.match ? '#16a34a' : '#dc2626' }}>
-                         {matchBreakdown.dob?.match ? 'Yes' : 'No'}
+                         {matchBreakdown.dob?.match ? t('Yes') : t('No')}
                        </span>
                      </div>
                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                       <span style={{ color: '#475569' }}>Gender Match:</span>
+                       <span style={{ color: '#475569' }}>{t('GenderMatch', 'Gender Match')}:</span>
                        <span style={{ fontWeight: 600, color: matchBreakdown.gender?.match ? '#16a34a' : '#dc2626' }}>
-                         {matchBreakdown.gender?.match ? 'Yes' : 'No'}
+                         {matchBreakdown.gender?.match ? t('Yes') : t('No')}
                        </span>
                      </div>
                      <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: '8px', marginTop: '4px' }}>
-                       <span style={{ fontWeight: 600 }}>Total Score:</span>
+                       <span style={{ fontWeight: 600 }}>{t('TotalScore', 'Total Score')}:</span>
                        <span style={{ fontWeight: 700, color: matchBreakdown.total >= 90 ? '#16a34a' : '#dc2626' }}>{matchBreakdown.total}%</span>
                      </div>
                    </div>
                  </div>
                )}
 
-               <button 
-                 onClick={() => handleSubmit()} 
-                 style={{...styles.submitBtn, marginTop: '24px', width: 'auto', padding: '10px 30px'}}
-               >
-                 {t('Retry', 'Retry')}
-               </button>
+               <div style={{ display: 'flex', gap: '16px', marginTop: '24px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                 <button 
+                   onClick={() => { setShowVerification(false); setCurrentStep(10); setLoading(false); setError(null); }} 
+                   style={{...styles.submitBtn, width: 'auto', padding: '12px 30px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 600}}
+                 >
+                   {t('Retry', 'Retry (Edit Form)')}
+                 </button>
+               </div>
             </div>
         );
     }
@@ -392,23 +426,23 @@ const EligibilityForm = () => {
             <div className="glass-card animate-fade-in" style={styles.placeholderCard}>
                 <ShieldCheck size={64} color="#ef4444" style={{ marginBottom: '20px' }} />
                 <h3 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-color)' }}>
-                   Document Vault Verification Required
+                   {t('DocumentVaultVerificationRequired', 'Document Vault Verification Required')}
                 </h3>
                 <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '12px', maxWidth: '450px', lineHeight: 1.6 }}>
-                   {error || "To view eligible schemes, SATYA requires at least one verified document in your personal SATYA AI Document Vault that matches your identity."}
+                   {error || t('VaultVerificationDesc', 'To view eligible schemes, SATYA requires at least one verified document in your personal SATYA AI Document Vault that matches your identity.')}
                 </p>
                 <div style={{ display: 'flex', gap: '16px', marginTop: '24px', flexWrap: 'wrap', justifyContent: 'center' }}>
                     <button 
                       onClick={() => window.location.href = '/vault'} 
                       style={{...styles.submitBtn, width: 'auto', padding: '12px 30px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 600}}
                     >
-                      Go to Document Vault
+                      {t('GoToDocumentVault', 'Go to Document Vault')}
                     </button>
                     <button 
                       onClick={() => handleSubmit()} 
                       style={{...styles.submitBtn, width: 'auto', padding: '12px 30px', background: 'transparent', border: '1px solid #e2e8f0', color: 'var(--text-color)', borderRadius: '12px', cursor: 'pointer', fontWeight: 600}}
                     >
-                      Check Status Again
+                      {t('CheckStatusAgain', 'Check Status Again')}
                     </button>
                 </div>
             </div>
@@ -421,7 +455,7 @@ const EligibilityForm = () => {
                <ShieldCheck size={60} color="var(--primary-color)" style={{ marginBottom: '20px' }} />
                <h3>{t('VerificationRequired')}</h3>
                 <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '12px', maxWidth: '300px' }}>
-                  {error || "Please verify documents in your Document Vault first."}
+                  {error || t('VerifyDocumentsFirst', 'Please verify documents in your Document Vault first.')}
                 </p>
             </div>
         );
@@ -501,9 +535,9 @@ const EligibilityForm = () => {
             </div>
             <div style={styles.row}>
                 <div style={styles.inputGroup}>
-                    <label>{t('EmailAddress', 'Email Address')}*</label>
+                    <label>{t('MobileNumber', 'Mobile Number')}*</label>
                     <div style={styles.inputWithBtn}>
-                        <input type="email" name="mobile" value={formData.mobile} onChange={handleChange} style={styles.input} placeholder={t('EmailPlaceholder', 'Enter your email')} />
+                        <input type="tel" name="mobile" value={formData.mobile} onChange={handleChange} style={styles.input} placeholder={t('MobilePlaceholder', 'Enter 10-digit mobile number')} maxLength="10" />
                         <button 
                           type="button" 
                           onClick={handleSendOTP} 
@@ -515,8 +549,8 @@ const EligibilityForm = () => {
                     </div>
                 </div>
                 <div style={styles.inputGroup}>
-                    <label>{t('EmailID')}</label>
-                    <input type="email" name="email" value={formData.email} onChange={handleChange} style={styles.input} placeholder={t('Optional')} />
+                    <label>{t('EmailAddress', 'Email Address')}</label>
+                    <input type="email" name="email" value={formData.email} onChange={handleChange} style={styles.input} placeholder={t('EmailPlaceholder', 'you@example.com')} />
                 </div>
             </div>
           </div>
@@ -909,8 +943,8 @@ const EligibilityForm = () => {
                 ))}
             </div>
             <div style={styles.stepLabels}>
-                {['Personal', 'Location', 'Income', 'Family', 'Category', 'Education', 'Occupation', 'Special', 'Preference', 'Declaration', 'FinalResult'].map((label, i) => (
-                    <span key={i} style={{...styles.stepLabel, color: currentStep === i + 1 ? 'var(--primary-color)' : 'var(--text-muted)'}}>{t(label)}</span>
+                {[t('Personal'), t('Location'), t('Income'), t('Family'), t('Category'), t('Education'), t('Occupation'), t('Special'), t('Preference'), t('Declaration'), t('FinalResult')].map((label, i) => (
+                    <span key={i} style={{...styles.stepLabel, color: currentStep === i + 1 ? 'var(--primary-color)' : 'var(--text-muted)'}}>{label}</span>
                 ))}
             </div>
         </div>
@@ -931,7 +965,17 @@ const EligibilityForm = () => {
                             {t('Next')} <ChevronRight size={18} />
                         </button>
                     ) : (
-                        <button type="button" onClick={handleSubmit} style={styles.submitBtn} disabled={loading || !formData.declaration_accepted}>
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            if (loading) return;
+                            handleVerifyIdentityFirst();
+                          }} 
+                          style={{
+                            ...styles.submitBtn, 
+                            cursor: loading ? 'wait' : 'pointer'
+                          }}
+                        >
                             {loading ? <div style={styles.spinner}></div> : t('FindSchemesNow')}
                         </button>
                     )}
@@ -994,7 +1038,8 @@ const styles = {
   formFooter: { marginTop: 'auto', paddingTop: '40px', display: 'flex', justifyContent: 'space-between' },
   nextBtn: { padding: '14px 30px', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' },
   backBtn: { padding: '14px 30px', background: 'transparent', border: '1px solid #e2e8f0', color: 'var(--text-muted)', borderRadius: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' },
-  submitBtn: { padding: '14px 40px', background: 'var(--secondary-color)', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 700, flex: 1, display: 'flex', justifyContent: 'center' },
+  submitBtn: { padding: '14px 40px', background: 'var(--secondary-color)', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 700, flex: 1, display: 'flex', justifyContent: 'center', cursor: 'pointer' },
+  spinner: { width: '20px', height: '20px', border: '3px solid rgba(255,255,255,0.3)', borderTop: '3px solid white', borderRadius: '50%', animation: 'spin 0.8s linear infinite' },
   modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(5px)', zIndex: 10000, display: 'flex', justifyContent: 'center', alignItems: 'center' },
   otpModal: { width: '400px', padding: '30px', background: 'white' },
   otpHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
@@ -1057,13 +1102,16 @@ const formatSteps = (steps) => {
     return [];
 };
 
-// Component for Scheme Card
 const SchemeItem = ({ scheme, t, onSelect, isIneligible }) => {
+  const { i18n } = useTranslation();
   const isPartial = scheme.status === 'Partially Eligible';
+  const schemeName = scheme.name_translations && scheme.name_translations[i18n.language]
+    ? scheme.name_translations[i18n.language]
+    : scheme.name;
   return (
   <div className="glass-card" style={{...styles.schemeCard, borderLeftColor: isIneligible ? 'var(--text-muted)' : (isPartial ? '#f59e0b' : 'var(--secondary-color)')}}>
     <div style={styles.schemeHeader}>
-      <h4 style={styles.schemeTitle}>{scheme.name}</h4>
+      <h4 style={styles.schemeTitle}>{schemeName}</h4>
       <div style={{display: 'flex', gap: '8px'}}>
         <span style={{
           ...styles.schemeTag, 
@@ -1085,7 +1133,11 @@ const SchemeItem = ({ scheme, t, onSelect, isIneligible }) => {
       </div>
     </div>
     
-    <p style={styles.schemeDesc}>{scheme.description?.substring(0, 120)}...</p>
+    <p style={styles.schemeDesc}>
+      {(scheme.description_translations && scheme.description_translations[i18n.language]
+        ? scheme.description_translations[i18n.language]
+        : scheme.description)?.substring(0, 120)}...
+    </p>
     
     {isPartial && scheme.reasons?.length > 0 && !isIneligible && (
         <div style={styles.partialReason}>
@@ -1122,14 +1174,24 @@ const SchemeItem = ({ scheme, t, onSelect, isIneligible }) => {
 )};
 
 // Detail Modal Component
-const SchemeDetailModal = ({ scheme, onClose, t }) => (
+const SchemeDetailModal = ({ scheme, onClose, t }) => {
+  const { i18n } = useTranslation();
+  const schemeName = scheme.name_translations && scheme.name_translations[i18n.language]
+    ? scheme.name_translations[i18n.language]
+    : scheme.name;
+  const schemeDesc = (scheme.description_translations && scheme.description_translations[i18n.language])
+    || scheme.description;
+  const schemeBenefits = (scheme.benefits_translations && scheme.benefits_translations[i18n.language])
+    || scheme.benefits;
+
+  return (
   <div style={styles.modalOverlay} onClick={onClose}>
     <div className="glass-card animate-fade-in" style={styles.modalContent} onClick={e => e.stopPropagation()}>
       <div style={styles.modalHeader}>
         <div style={styles.modalTitleArea}>
           <div style={styles.modalIcon}><Info size={24} /></div>
           <div>
-            <h3>{scheme.name}</h3>
+            <h3>{schemeName}</h3>
             <p style={{color:'var(--text-muted)'}}>{t('GovernmentSchemeDetails')}</p>
           </div>
         </div>
@@ -1140,7 +1202,7 @@ const SchemeDetailModal = ({ scheme, onClose, t }) => (
         <div style={styles.infoGrid}>
           <div style={styles.infoCard}>
             <SectionHeader icon={Info} title={t('Overview')} />
-            <p style={styles.modalText}>{scheme.description}</p>
+            <p style={styles.modalText}>{schemeDesc}</p>
           </div>
 
           <div style={styles.infoCard}>
@@ -1163,10 +1225,10 @@ const SchemeDetailModal = ({ scheme, onClose, t }) => (
             </div>
           </div>
 
-          {scheme.benefits && (
+          {schemeBenefits && (
             <div style={styles.infoCard}>
               <SectionHeader icon={Sparkles} title={t('SchemeBenefits', 'Benefits')} />
-              <p style={styles.modalText}>{scheme.benefits}</p>
+              <p style={styles.modalText}>{schemeBenefits}</p>
             </div>
           )}
 
@@ -1195,6 +1257,7 @@ const SchemeDetailModal = ({ scheme, onClose, t }) => (
       )}
     </div>
   </div>
-);
+  );
+};
 
 export default EligibilityForm;

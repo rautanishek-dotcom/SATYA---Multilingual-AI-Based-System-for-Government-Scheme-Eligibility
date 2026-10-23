@@ -276,9 +276,9 @@ class AadhaarOcrVerifier(BaseVerifier):
         filled = sum(bool(f) for f in [name, dob, gender])
         confidence = {3: 85.0, 2: 72.0, 1: 55.0}.get(filled, 40.0)
 
-        if filled >= 2:
+        if filled >= 2 and confidence >= 80.0:
             return True, VerificationStatus.OCR_VERIFIED, confidence
-        return False, VerificationStatus.REJECTED, 30.0
+        return False, VerificationStatus.REJECTED, confidence
 
     def save(self, metadata, user_id):
         metadata['document_type'] = DocumentTypes.AADHAAR_CARD

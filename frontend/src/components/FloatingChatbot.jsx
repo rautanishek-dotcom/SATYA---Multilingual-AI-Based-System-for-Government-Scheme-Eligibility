@@ -13,49 +13,49 @@ const FloatingChatbot = () => {
   const [suggestions, setSuggestions] = useState([]);
   const messagesEndRef = useRef(null);
 
-  useEffect(() => {
-    // Fetch localized initial suggestions and greeting
-    const fetchLocalization = async () => {
-      try {
-        const langCode = i18n.language || 'en';
-        const response = await fetch(`http://localhost:5000/api/chatbot/suggestions?lang=${langCode}`);
-        const data = await response.json();
-        if (data.suggestions) setSuggestions(data.suggestions);
-      } catch (err) {
-        console.error('Localization fetch error:', err);
-      }
-    };
-    fetchLocalization();
-  }, [i18n.language, t]);
-
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Language sync: Fetch new suggestions and update greeting when language changes
   useEffect(() => {
-    const fetchSuggestions = async () => {
-      try {
-        const langCode = i18n.language || 'en';
-        const res = await fetch(`http://localhost:5000/api/chatbot/suggestions?lang=${langCode}`);
-        const data = await res.json();
-        if (data.suggestions) {
-          setSuggestions(data.suggestions);
-        }
-      } catch (error) {
-        console.error("Failed to fetch suggestions:", error);
-      }
-    };
+    const controller = new AbortController();
 
-    fetchSuggestions();
-
-    // If chat is fresh (only greeting), update the greeting to current language
     setMessages(prev => {
       if (prev.length === 1 && prev[0].isBot) {
         return [{ text: t('ChatWelcome'), isBot: true }];
       }
       return prev;
     });
+
+    const fetchLocalization = async () => {
+      try {
+        const langCode = i18n.language || 'en';
+        const response = await fetch(
+          `http://localhost:5000/api/chatbot/suggestions?lang=${langCode}`,
+          { signal: controller.signal }
+        );
+        if (!response.ok) throw new Error('Failed to load chatbot localization');
+
+        const data = await response.json();
+        if (controller.signal.aborted) return;
+        if (data.suggestions) setSuggestions(data.suggestions);
+        if (data.welcome_message) {
+          setMessages(prev => {
+            if (prev.length === 1 && prev[0].isBot) {
+              return [{ text: data.welcome_message, isBot: true }];
+            }
+            return prev;
+          });
+        }
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          console.error('Localization fetch error:', error);
+        }
+      }
+    };
+
+    fetchLocalization();
+    return () => controller.abort();
   }, [i18n.language, t]);
 
   useEffect(() => {
@@ -71,40 +71,60 @@ const FloatingChatbot = () => {
     setIsLoading(true);
     setSuggestions([]);
 
-    try {
-      const langCode = i18n.language || 'en';
-      const response = await fetch('http://localhost:5000/api/chatbot', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          query: userMsg,
-          lang: langCode
-        })
-      });
-      const data = await response.json();
-      
-      setMessages(prev => [...prev, { text: data.response, isBot: true }]);
-      
-      // Update suggestions if returned
-      if (data.suggestions && data.suggestions.length > 0) {
-        setSuggestions(data.suggestions);
+    const maxRetries = 2;
+    let lastError = null;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const controller = new AbortController();
+      const timeoutMs = attempt === 0 ? 45000 : 60000;
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+      try {
+        const langCode = i18n.language || 'en';
+        const response = await fetch('http://localhost:5000/api/chatbot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            query: userMsg,
+            lang: langCode
+          }),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        
+        setMessages(prev => [...prev, { text: data.response, isBot: true }]);
+        if (data.suggestions && data.suggestions.length > 0) {
+          setSuggestions(data.suggestions);
+        }
+        setIsLoading(false);
+        return; // success
+      } catch (error) {
+        clearTimeout(timeoutId);
+        lastError = error;
+        if (attempt < maxRetries && error.name === 'AbortError') {
+          continue; // retry on timeout
+        }
       }
-    } catch (error) {
-      console.error(error);
-      setMessages(prev => [...prev, { text: t('ChatError', "I am currently having some technical difficulties. Please try again or select from the options below."), isBot: true }]);
-      // Keep existing suggestions or show common ones if empty
-      if (!suggestions || suggestions.length === 0) {
-          setSuggestions([
-            "Main Menu",
-            "List All Schemes",
-            "What is SATYA?",
-            "How to check my eligibility?",
-            "What is Ayushman Bharat?"
-          ]);
-      }
-    } finally {
-      setIsLoading(false);
     }
+
+    // All retries exhausted
+    console.error(lastError);
+    const errMsg = lastError?.name === 'AbortError'
+      ? t('ChatTimeout', "The response is taking too long. Please try again.")
+      : t('ChatError', "I am currently having some technical difficulties. Please try again or select from the options below.");
+    setMessages(prev => [...prev, { text: errMsg, isBot: true }]);
+    if (!suggestions || suggestions.length === 0) {
+      setSuggestions([
+        "Main Menu",
+        "List All Schemes",
+        "What is SATYA?",
+        "How to check my eligibility?",
+        "What is Ayushman Bharat?"
+      ]);
+    }
+    setIsLoading(false);
   };
 
   const handleKeyPress = (e) => {
@@ -173,7 +193,7 @@ const FloatingChatbot = () => {
             {/* Suggestion Chips */}
             {suggestions.length > 0 && !isLoading && (
               <div style={styles.suggestionsContainer}>
-                <span style={styles.suggestionsLabel}>💡 Suggested Questions:</span>
+                <span style={styles.suggestionsLabel}>💡 {t('SuggestedQuestions', 'Suggested Questions')}:</span>
                 <div style={styles.suggestionsGrid}>
                   {suggestions.map((q, idx) => (
                     <button

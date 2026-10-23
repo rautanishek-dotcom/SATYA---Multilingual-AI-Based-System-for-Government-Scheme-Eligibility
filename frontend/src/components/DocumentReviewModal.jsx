@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CheckCircle2, XCircle, AlertTriangle, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 const API_BASE = 'http://localhost:5000/api/vault';
@@ -13,13 +14,17 @@ const API_BASE = 'http://localhost:5000/api/vault';
  *   onConfirm  - called with (verifiedData, corrections)
  */
 export default function DocumentReviewModal({ document, isOpen, onClose, onConfirm }) {
+  const { t } = useTranslation();
   // Prefer verified_data, fall back to ocr_data, then metadata
   const ocr = document?.ocr_data || document?.metadata || {};
   const verified = document?.verified_data || document?.metadata || {};
 
-  // Build initial form values — try all possible key aliases for name
+  const isCaste = (document?.document_type === 'caste_certificate') || (document?.document_label === 'Caste Certificate') || Boolean(verified.category || ocr.category);
+
+  // Build initial form values — try all possible key aliases for name and category
   const getInitial = () => ({
     owner_name: verified.owner_name || verified.name || verified.full_name || ocr.owner_name || ocr.name || ocr.full_name || '',
+    category:   verified.category || verified.caste_category || ocr.category || ocr.caste_category || 'OBC',
     dob:        verified.dob        || ocr.dob        || '',
     gender:     verified.gender     || ocr.gender     || '',
     address:    verified.address    || ocr.address    || '',
@@ -74,28 +79,31 @@ export default function DocumentReviewModal({ document, isOpen, onClose, onConfi
   let bannerIcon = <CheckCircle2 size={22} />;
   let bannerColor = '#166534';
   let bannerBg = '#dcfce7';
-  let bannerTitle = 'Document Ready';
-  let bannerMsg = 'Please review the extracted information below, then click Confirm & Save.';
+  let bannerTitle = t('DocumentReady', 'Document Ready');
+  let bannerMsg = t('DocumentReadyMsg', 'Please review the extracted information below, then click Confirm & Save.');
 
   if (confidence < 75) {
     bannerIcon = <XCircle size={22} />;
     bannerColor = '#991b1b';
     bannerBg = '#fee2e2';
-    bannerTitle = 'Low Confidence — Manual Review Required';
-    bannerMsg = 'Verification confidence is below 75%. Please verify all fields carefully. You may still save after correcting any errors.';
+    bannerTitle = t('LowConfidenceTitle', 'Low Confidence — Manual Review Required');
+    bannerMsg = t('LowConfidenceMsg', 'Verification confidence is below 75%. Please verify all fields carefully. You may still save after correcting any errors.');
   } else if (confidence < 90) {
     bannerIcon = <AlertTriangle size={22} />;
     bannerColor = '#9a3412';
     bannerBg = '#ffedd5';
-    bannerTitle = 'Review Required';
-    bannerMsg = 'Moderate confidence. Please check each field for accuracy before saving.';
+    bannerTitle = t('ReviewRequiredTitle', 'Review Required');
+    bannerMsg = t('ReviewRequiredMsg', 'Moderate confidence. Please check each field for accuracy before saving.');
   }
 
-  // Fields to show — NO document_number or address per user request
-  const displayFields = [
-    { key: 'owner_name', label: 'Full Name' },
-    { key: 'dob',        label: 'Date of Birth (YYYY-MM-DD)' },
-    { key: 'gender',     label: 'Gender' },
+  // Fields to show
+  const displayFields = isCaste ? [
+    { key: 'owner_name', label: t('FullName', 'Full Name') },
+    { key: 'category', label: t('CasteCategory', 'Caste Category'), type: 'select', options: ['OBC', 'SC', 'ST', 'General'] },
+  ] : [
+    { key: 'owner_name', label: t('FullName', 'Full Name') },
+    { key: 'dob',        label: t('DOBFormat', 'Date of Birth (YYYY-MM-DD)') },
+    { key: 'gender',     label: t('Gender', 'Gender') },
   ];
 
   // Build preview URL — absolute to backend, not Vite proxy
@@ -190,7 +198,7 @@ export default function DocumentReviewModal({ document, isOpen, onClose, onConfi
             </div>
 
             {/* Editable fields */}
-            {displayFields.map(({ key, label }) => {
+            {displayFields.map(({ key, label, type, options }) => {
               const conf = fieldConfidence[key];
               const isLow = conf !== undefined && conf < 85;
               const changed = formData[key] !== (ocr[key] || '');
@@ -212,20 +220,39 @@ export default function DocumentReviewModal({ document, isOpen, onClose, onConfi
                       {changed && <span style={{ fontSize: 11, color: '#0ea5e9', fontWeight: 600 }}>Edited</span>}
                     </div>
                   </div>
-                  <input
-                    type="text"
-                    value={formData[key] || ''}
-                    placeholder={`Enter ${label}`}
-                    onChange={e => handleChange(key, e.target.value)}
-                    style={{
-                      width: '100%', boxSizing: 'border-box',
-                      padding: '10px 13px',
-                      border: `1.5px solid ${changed ? '#0ea5e9' : isLow ? '#fca5a5' : '#cbd5e1'}`,
-                      borderRadius: 9, fontSize: 14, fontFamily: 'inherit',
-                      outline: 'none', background: '#f8fafc',
-                      transition: 'border 0.2s',
-                    }}
-                  />
+                  {type === 'select' ? (
+                    <select
+                      value={formData[key] || 'OBC'}
+                      onChange={e => handleChange(key, e.target.value)}
+                      style={{
+                        width: '100%', boxSizing: 'border-box',
+                        padding: '10px 13px',
+                        border: `1.5px solid ${changed ? '#0ea5e9' : '#cbd5e1'}`,
+                        borderRadius: 9, fontSize: 14, fontFamily: 'inherit',
+                        outline: 'none', background: '#f8fafc',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {options.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      value={formData[key] || ''}
+                      placeholder={`Enter ${label}`}
+                      onChange={e => handleChange(key, e.target.value)}
+                      style={{
+                        width: '100%', boxSizing: 'border-box',
+                        padding: '10px 13px',
+                        border: `1.5px solid ${changed ? '#0ea5e9' : isLow ? '#fca5a5' : '#cbd5e1'}`,
+                        borderRadius: 9, fontSize: 14, fontFamily: 'inherit',
+                        outline: 'none', background: '#f8fafc',
+                        transition: 'border 0.2s',
+                      }}
+                    />
+                  )}
                 </div>
               );
             })}
@@ -248,7 +275,7 @@ export default function DocumentReviewModal({ document, isOpen, onClose, onConfi
                 onMouseEnter={e => e.target.style.background = '#f1f5f9'}
                 onMouseLeave={e => e.target.style.background = '#fff'}
               >
-                Cancel
+                {t('Cancel', 'Cancel')}
               </button>
               <button
                 type="button"
@@ -264,7 +291,7 @@ export default function DocumentReviewModal({ document, isOpen, onClose, onConfi
                 }}
               >
                 <CheckCircle2 size={16} />
-                {submitting ? 'Saving...' : 'Confirm & Save'}
+                {submitting ? t('Saving', 'Saving...') : t('ConfirmAndSave', 'Confirm & Save')}
               </button>
             </div>
 

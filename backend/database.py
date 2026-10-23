@@ -19,6 +19,7 @@ def init_db(app):
         from pymongo import ASCENDING
         db.email_otps.create_index([("expires_at", ASCENDING)], expireAfterSeconds=0)
         db.eligibility_cache.create_index([("created_at", ASCENDING)], expireAfterSeconds=86400) # 24h
+        db.schemes.create_index([("status", ASCENDING), ("is_active", ASCENDING), ("last_verified", ASCENDING)])
         print("MongoDB Indexes Verified.")
     except Exception as e:
         print("MongoDB Index creation warning:", e)

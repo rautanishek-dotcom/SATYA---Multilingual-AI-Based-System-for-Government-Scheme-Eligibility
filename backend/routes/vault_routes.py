@@ -245,6 +245,478 @@ def _clear_identity_lock_if_aadhaar_removed(db, user_id, deleted_doc):
     return True
 
 
+def _clear_caste_lock_if_caste_doc_removed(db, user_id, deleted_doc):
+    """
+    Clear the persisted caste identity lock if the removed document was a
+    verified Caste Certificate and no other verified Caste Certificate remains.
+    """
+    if db is None or not user_id or not deleted_doc:
+        return False
+
+    doc_type = str(deleted_doc.get("document_type", deleted_doc.get("document_label", ""))).lower()
+    if "caste" not in doc_type:
+        return False
+
+    remaining = db.vault_documents.count_documents(
+        {
+            "user_id": str(user_id),
+            "document_status": "Accepted",
+            "$or": [
+                {"document_type": {"$regex": "caste", "$options": "i"}},
+                {"document_label": {"$regex": "caste", "$options": "i"}},
+            ],
+        }
+    )
+    if remaining > 0:
+        return False
+
+    db.users.update_one(
+        {"_id": ObjectId(user_id)},
+        {
+            "$set": {
+                "caste_locked": False,
+                "caste_identity_profile": {},
+                "caste_category": "",
+                "updated_at": datetime.datetime.utcnow(),
+            },
+            "$unset": {
+                "caste_verified_at": "",
+                "caste_reset_pending": "",
+            },
+        },
+    )
+    return True
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CASTE IDENTITY LOCK HELPERS & ENDPOINTS
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _serialize_caste_identity(db_user, profile=None):
+    if profile is None:
+        profile = (db_user or {}).get("caste_identity_profile", {}) or {}
+    return {
+        "category": profile.get("category", "") or (db_user or {}).get("caste_category", ""),
+        "name": profile.get("name", "") or profile.get("fullName", ""),
+        "certificate_number": profile.get("certificate_number", ""),
+        "authority": profile.get("authority", ""),
+        "confidence": float(profile.get("confidence", 0.0) or 0.0),
+        "document_type": profile.get("document_type", "Caste Certificate"),
+        "verification_method": profile.get("verification_method", "OCR Contextual Extraction"),
+        "verification_status": profile.get("verification_status", "Unverified"),
+        "locked": bool((db_user or {}).get("caste_locked", False) or profile.get("verification_status") == "Verified"),
+        "verification_date": profile.get("verification_date", None),
+        "document_id": profile.get("document_id", None),
+    }
+
+
+def _persist_caste_identity_lock(db, user_id, caste_data, document_id=None):
+    if db is None or not user_id:
+        return False, {}
+
+    category = caste_data.get("category")
+    confidence = float(caste_data.get("confidence", 0.0) or 0.0)
+    # Strict check: only lock if category is valid normalized value and confidence >= 70%
+    if category not in ["General", "OBC", "SC", "ST"] or confidence < 70.0:
+        return False, {}
+
+    now = datetime.datetime.utcnow()
+    caste_profile = {
+        "category": category,
+        "name": caste_data.get("name", ""),
+        "certificate_number": caste_data.get("certificate_number", ""),
+        "authority": caste_data.get("authority", ""),
+        "confidence": confidence,
+        "document_type": "Caste Certificate",
+        "verification_method": caste_data.get("verification_method", "OCR Contextual Extraction"),
+        "verification_status": "Verified",
+        "verification_date": now.isoformat(),
+        "document_id": str(document_id) if document_id else None,
+    }
+
+    db.users.update_one(
+        {"_id": ObjectId(user_id)},
+        {
+            "$set": {
+                "caste_locked": True,
+                "caste_category": category,
+                "caste_identity_profile": caste_profile,
+                "updated_at": now,
+            }
+        }
+    )
+
+    # Invalidate eligibility cache for this user
+    try:
+        from routes.eligibility_routes import _ELIGIBILITY_CACHE
+        keys_to_remove = [k for k in _ELIGIBILITY_CACHE if k.startswith(f"{user_id}:")]
+        for k in keys_to_remove:
+            del _ELIGIBILITY_CACHE[k]
+    except Exception:
+        pass
+
+    return True, caste_profile
+
+
+def _caste_ocr_text(document):
+    """Return persisted OCR plus a labelled structured category, if available.
+
+    The document manager keeps structured OCR fields separately from its display
+    text.  Supplying that field as labelled OCR lets the caste verifier normalize
+    valid values such as ``O.B.C.`` without trusting an unlabelled keyword.
+    """
+    document = document or {}
+    text = document.get("ocr_text", "") or ""
+    sealed_fields = (document.get("sealed_payload", {}) or {}).get("fields", {}) or {}
+    category_field = sealed_fields.get("category", {})
+    category = category_field.get("value", "") if isinstance(category_field, dict) else category_field
+    if category:
+        text = f"{text}\nCategory: {category}"
+    return text
+
+
+@vault_bp.route("/caste_status", methods=["GET"])
+def get_caste_status():
+    """Fetch current user's caste identity verification status and profile."""
+    try:
+        user_id = request.args.get("user_id")
+        if not user_id:
+            return jsonify({"error": "user_id is required"}), 400
+
+        db = get_db()
+        if db is None:
+            return jsonify({"error": "Database unavailable"}), 500
+
+        db_user = db.users.find_one({"_id": ObjectId(user_id)})
+        if not db_user:
+            return jsonify({"error": "User not found"}), 404
+
+        locked = bool(db_user.get("caste_locked", False))
+        profile = _serialize_caste_identity(db_user)
+
+        # Retrieve active caste certificate document if exists
+        caste_doc = db.vault_documents.find_one(
+            {
+                "user_id": str(user_id),
+                "is_active": True,
+                "$or": [
+                    {"document_type": "caste_certificate"},
+                    {"document_label": {"$regex": "caste", "$options": "i"}}
+                ]
+            },
+            sort=[("created_at", -1)]
+        )
+
+        doc_data = None
+        if caste_doc:
+            doc_data = {
+                "document_id": str(caste_doc["_id"]),
+                "document_name": caste_doc.get("document_name", "Caste Certificate"),
+                "document_status": caste_doc.get("document_status", "Accepted"),
+                "confidence": caste_doc.get("confidence", 0),
+                "created_at": caste_doc.get("created_at", "").isoformat() if isinstance(caste_doc.get("created_at"), datetime.datetime) else str(caste_doc.get("created_at", ""))
+            }
+
+        return jsonify({
+            # Keep both response shapes during the frontend transition.
+            "success": True,
+            "locked": locked,
+            "caste_locked": locked,
+            "category": profile.get("category"),
+            "verification_status": "Verified" if locked else "Unverified",
+            "profile": profile,
+            "caste_profile": profile,
+            "document": doc_data,
+            "caste_document": doc_data,
+        }), 200
+    except Exception as exc:
+        logger.exception("get_caste_status failed: %s", exc)
+        return jsonify({"error": "Failed to fetch caste status"}), 500
+
+
+@vault_bp.route("/verify_caste", methods=["POST"])
+def verify_caste():
+    """
+    Independent Caste Verification Endpoint.
+    Receives uploaded caste certificate, performs contextual OCR, normalizes category,
+    creates document record, and locks Caste Identity (without touching Aadhaar).
+    """
+    try:
+        user_id = request.form.get("user_id")
+        if not user_id:
+            return jsonify({"error": "user_id is required"}), 400
+
+        if "file" not in request.files:
+            return jsonify({"error": "No file uploaded"}), 400
+
+        file_obj = request.files["file"]
+        if not file_obj or not file_obj.filename:
+            return jsonify({"error": "Empty file uploaded"}), 400
+
+        db = get_db()
+        if db is None:
+            return jsonify({"error": "Database unavailable"}), 500
+
+        db_user = db.users.find_one({"_id": ObjectId(user_id)})
+        if not db_user:
+            return jsonify({"error": "User not found"}), 404
+
+        # Process upload via DocumentManager
+        dm = DocumentManager()
+        
+        # Save a temporary unencrypted copy for our specialized OpenCV caste extraction
+        # before the DocumentManager fully consumes and encrypts the file_obj.
+        temp_img_path = ""
+        try:
+            file_obj.seek(0)
+            fd, temp_img_path = tempfile.mkstemp(suffix=".png")
+            with os.fdopen(fd, 'wb') as f:
+                f.write(file_obj.read())
+            file_obj.seek(0)
+        except Exception as e:
+            logger.warning("Failed to create temp file for Caste OCR: %s", e)
+
+        upload_res = dm.process_upload(user_id, file_obj)
+
+        if upload_res.get("status") == "FAILED":
+            if temp_img_path and os.path.exists(temp_img_path):
+                os.remove(temp_img_path)
+            return jsonify({"error": upload_res.get("message", "Upload failed")}), 400
+
+        doc_id = upload_res.get("document_id")
+        doc_record = db.vault_documents.find_one({"_id": ObjectId(doc_id)}) if doc_id else None
+
+        # Run caste verifier OCR extraction
+        from vault.verifiers.caste_certificate import CasteCertificateVerifier
+        verifier = CasteCertificateVerifier()
+
+        ocr_text = _caste_ocr_text(doc_record)
+
+        if not verifier.detect(temp_img_path, text=ocr_text):
+            if temp_img_path and os.path.exists(temp_img_path):
+                os.remove(temp_img_path)
+            if doc_id:
+                db.vault_documents.delete_one({"_id": ObjectId(doc_id)})
+            return jsonify({"error": "Invalid Document: Uploaded file is not a recognized Caste Certificate."}), 400
+        
+        # Use the unencrypted temporary copy for OpenCV multi-pass OCR extraction
+        extracted = verifier.extract(temp_img_path, raw_text=ocr_text, user_id=user_id)
+        
+        # Clean up temporary file
+        if temp_img_path and os.path.exists(temp_img_path):
+            os.remove(temp_img_path)
+
+        category = extracted.get("category")
+        confidence = extracted.get("confidence", 0.0)
+
+        # Update vault document with extracted OCR data, but keep status as Awaiting Review
+        # Identity lock will happen ONLY when the user clicks Confirm & Save (/confirm_caste_review)
+        if doc_id:
+            db.vault_documents.update_one(
+                {"_id": ObjectId(doc_id)},
+                {"$set": {
+                    "document_type": "caste_certificate",
+                    "document_label": "Caste Certificate",
+                    "document_status": "Awaiting Review",
+                    "verification_status": "Pending",
+                    "identity_status": "Pending",
+                    "confidence": confidence,
+                    "updated_at": datetime.datetime.utcnow(),
+                    "caste_category": category,
+                    "verified_data": {
+                        "category": category,
+                        "name": extracted.get("name") or "",
+                        "certificate_number": extracted.get("certificate_number") or "",
+                        "authority": extracted.get("authority") or ""
+                    },
+                    "ocr_data": extracted
+                }}
+            )
+
+        return jsonify({
+            "success": True,
+            "message": f"Caste certificate extracted. Category: {category or 'Unable to determine'}",
+            "document_id": doc_id,
+            "category": category,
+            "confidence": confidence,
+            "locked": False,
+            "profile": {
+                "category": category or "",
+                "name": extracted.get("name") or "",
+                "certificate_number": extracted.get("certificate_number") or "",
+                "authority": extracted.get("authority") or "",
+                "confidence": confidence,
+                "document_type": "Caste Certificate",
+                "verification_method": "Caste Certificate OCR + Contextual Extraction",
+                "verification_status": "Pending",
+                "locked": False,
+            },
+            "caste_profile": {
+                "category": category or "",
+                "name": extracted.get("name") or "",
+                "certificate_number": extracted.get("certificate_number") or "",
+                "authority": extracted.get("authority") or "",
+                "confidence": confidence,
+                "document_type": "Caste Certificate",
+                "verification_method": "Caste Certificate OCR + Contextual Extraction",
+                "verification_status": "Pending",
+                "locked": False,
+            },
+            "verification_status": "Pending"
+        }), 200
+    except Exception as exc:
+        logger.exception("verify_caste failed: %s", exc)
+        return jsonify({"error": f"Caste verification error: {str(exc)}"}), 500
+
+
+@vault_bp.route("/confirm_caste_review", methods=["POST"])
+def confirm_caste_review():
+    """
+    Confirm and save user-reviewed data for a Caste Certificate.
+    Updates the vault document and locks/updates the caste identity profile.
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        user_id = data.get("user_id")
+        doc_id = data.get("document_id")
+        verified_data = data.get("verified_data") or {}
+
+        if not user_id or not doc_id:
+            return jsonify({"error": "user_id and document_id are required"}), 400
+
+        db = get_db()
+        if db is None:
+            return jsonify({"error": "Database unavailable"}), 500
+
+        category = verified_data.get("category") or verified_data.get("caste_category")
+        name = verified_data.get("owner_name") or verified_data.get("name") or verified_data.get("full_name") or ""
+
+        if not category or category not in {"General", "OBC", "SC", "ST"}:
+            return jsonify({"error": "A valid Caste Category (OBC, SC, ST, General) is required."}), 400
+
+        # Build lock profile
+        confidence = 94.0 if name else 85.0
+        extracted = {
+            "category": category,
+            "name": name,
+            "confidence": confidence,
+            "verification_method": "Caste Certificate User Confirmed OCR"
+        }
+
+        locked, lock_profile = _persist_caste_identity_lock(db, user_id, extracted, document_id=doc_id)
+
+        # Update vault document
+        db.vault_documents.update_one(
+            {"_id": ObjectId(doc_id)},
+            {"$set": {
+                "document_type": "caste_certificate",
+                "document_label": "Caste Certificate",
+                "document_status": "Accepted",
+                "verification_status": "Accepted",
+                "identity_status": "Verified",
+                "confidence": confidence,
+                "verification_timestamp": datetime.datetime.utcnow(),
+                "updated_at": datetime.datetime.utcnow(),
+                "caste_category": category,
+                "verified_data": {
+                    "category": category,
+                    "name": name,
+                    "owner_name": name,
+                }
+            }}
+        )
+
+        db_user = db.users.find_one({"_id": ObjectId(user_id)})
+        return jsonify({
+            "success": True,
+            "document_status": "Accepted",
+            "message": f"Caste Certificate verified and locked. Category: {category}",
+            "caste_profile": _serialize_caste_identity(db_user, lock_profile),
+            "locked": locked
+        }), 200
+    except Exception as exc:
+        logger.exception("confirm_caste_review failed: %s", exc)
+        return jsonify({"error": f"Failed to confirm caste review: {str(exc)}"}), 500
+
+
+@vault_bp.route("/reset_caste_lock", methods=["POST"])
+def reset_caste_lock():
+    """
+    Reset Caste Identity Lock ONLY.
+    Preserves Aadhaar lock, user account, email, password, and unrelated documents.
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        user_id = data.get("user_id") or request.form.get("user_id")
+        password = data.get("password", "")
+        if not user_id:
+            return jsonify({"error": "user_id is required"}), 400
+        if not password:
+            return jsonify({"error": "Password required for caste identity reset"}), 400
+
+        db = get_db()
+        if db is None:
+            return jsonify({"error": "Database unavailable"}), 500
+
+        db_user = db.users.find_one({"_id": ObjectId(user_id)})
+        if not db_user:
+            return jsonify({"error": "User not found"}), 404
+        stored_password = db_user.get("password")
+        if isinstance(stored_password, str):
+            stored_password = stored_password.encode("utf-8")
+        if not stored_password or not bcrypt.checkpw(password.encode("utf-8"), stored_password):
+            return jsonify({"error": "Incorrect login password. Caste identity was not reset."}), 401
+
+        now = datetime.datetime.utcnow()
+        # Reset caste lock fields on user document ONLY
+        db.users.update_one(
+            {"_id": ObjectId(user_id)},
+            {
+                "$set": {
+                    "caste_locked": False,
+                    "updated_at": now,
+                },
+                "$unset": {
+                    "caste_category": "",
+                    "caste_identity_profile": "",
+                }
+            }
+        )
+
+        # Soft deactivate active caste certificate documents
+        db.vault_documents.update_many(
+            {
+                "user_id": str(user_id),
+                "$or": [
+                    {"document_type": "caste_certificate"},
+                    {"document_label": {"$regex": "caste", "$options": "i"}}
+                ]
+            },
+            {"$set": {"is_active": False, "document_status": "Unverified", "identity_status": "Unverified", "updated_at": now}}
+        )
+
+        # Invalidate eligibility cache
+        try:
+            from routes.eligibility_routes import _ELIGIBILITY_CACHE
+            keys_to_remove = [k for k in _ELIGIBILITY_CACHE if k.startswith(f"{user_id}:")]
+            for k in keys_to_remove:
+                del _ELIGIBILITY_CACHE[k]
+        except Exception:
+            pass
+
+        logger.info("[CASTE] Caste identity lock reset for user %s. Aadhaar lock untouched.", user_id)
+
+        return jsonify({
+            "success": True,
+            "message": "Caste identity reset successfully. Aadhaar identity remains intact.",
+            "caste_locked": False,
+            "aadhaar_locked": bool(db_user.get("identity_locked", False))
+        }), 200
+    except Exception as exc:
+        logger.exception("reset_caste_lock failed: %s", exc)
+        return jsonify({"error": f"Failed to reset caste identity: {str(exc)}"}), 500
+
+
 def _purge_identity_documents(user_id):
     """Remove only Aadhaar records that belong to the locked identity."""
     db = get_db()
@@ -342,6 +814,23 @@ def upload_document():
     except Exception as e:
         logger.exception("Upload processing failed: %s", e)
         result = {"status": "FAILED", "error": str(e)}
+
+    # The shared upload area used by Aadhaar Card Verification must strictly reject
+    # documents that belong to other dedicated verification flows (e.g. Caste Certificate).
+    if result.get("status") != "FAILED" and result.get("document_id"):
+        try:
+            db = get_db()
+            document_id = result["document_id"]
+            doc = db.vault_documents.find_one({"_id": ObjectId(document_id)}) if db is not None else None
+            
+            if doc and doc.get("document_type") == "caste_certificate":
+                db.vault_documents.delete_one({"_id": ObjectId(document_id)})
+                result = {
+                    "status": "REJECTED",
+                    "error": "Invalid Upload: Please use the dedicated 'Add Caste Certificate' section to upload Caste Certificates."
+                }
+        except Exception:
+            logger.exception("Validation of document type from shared upload failed")
 
     status_code = 200
     result_status = result.get("status", "")
@@ -598,6 +1087,7 @@ def delete_document(document_id):
     if success:
         try:
             _clear_identity_lock_if_aadhaar_removed(db, user_id, deleted_doc)
+            _clear_caste_lock_if_caste_doc_removed(db, user_id, deleted_doc)
         except Exception:
             pass
         return jsonify({"message": "Document deleted"}), 200

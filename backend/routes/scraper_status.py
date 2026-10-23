@@ -72,6 +72,7 @@ def scraper_stats():
 
     return jsonify({
         "total_schemes"   : total,
+        "active_schemes"  : schemes_col.count_documents({"status": "active", "is_active": True}),
         "by_source"       : [{"source": s["_id"], "count": s["count"]} for s in by_source],
         "top_10_states"   : [{"state": s["_id"], "count": s["count"]} for s in by_state],
         "last_scrape_run" : last_run,
@@ -95,16 +96,16 @@ def trigger_scraper():
     # Find the scraper script path relative to this file
     scraper_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "scheme_scraper.py"
+        "scheme_updater.py"
     )
 
     if not os.path.exists(scraper_path):
-        return jsonify({"error": "scheme_scraper.py not found."}), 500
+        return jsonify({"error": "scheme_updater.py not found."}), 500
 
     try:
         # Run scraper in background (non-blocking)
         subprocess.Popen(
-            [sys.executable, scraper_path],
+            [sys.executable, scraper_path, "--sync-live"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0

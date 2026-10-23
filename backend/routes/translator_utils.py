@@ -2,25 +2,46 @@
 Translation utilities for SATYA multilingual system.
 Uses direct Google Translate API (no googletrans library dependency for translation).
 Thread-safe cache with periodic disk writes for performance.
+
+PERFORMANCE OPTIMISED:
+- Google GTX used as PRIMARY translator (fastest, no library overhead, no rate-limit)
+- Bhashini native batch API for bulk translations (one HTTP call = many texts)
+- Global translation lock REMOVED – allows true parallel calls
+- MyMemory removed from hot path (slowest provider)
+- Persistent HTTP session for connection reuse
 """
 import re
 import json
 import os
+import requests
 import time
 import threading
 import urllib.request
 import urllib.parse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from langdetect import detect, DetectorFactory
 from deep_translator import GoogleTranslator
+from deep_translator.exceptions import TooManyRequests
+from language_config import SUPPORTED_LANGUAGE_CODES
 
 # Set seed for consistent detection
 DetectorFactory.seed = 0
+
+# Thread-pool for concurrent translation batches
+_translate_pool = ThreadPoolExecutor(max_workers=6)
+
+# Persistent HTTP session – reuses TCP connections (saves ~80ms/call)
+_http_session = requests.Session()
+_http_session.headers.update({
+    'Content-Type': 'application/json',
+    'User-Agent': 'SATYA/2.0',
+})
 
 # Local Cache Path
 CACHE_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 CACHE_FILE = os.path.join(CACHE_DIR, 'translation_cache.json')
 
-# Static Map for Instant UI (Greeting, Suggestions, Fallbacks)
+# Static Map for Instant UI (Greeting, Suggestions, Fallbacks) — ALL 23 languages
 STATIC_UI_CACHE = {
     "greeting": {
         "en": "Hello! I am SATYA, your Govt Schemes Assistant. How can I help you today?",
@@ -31,9 +52,24 @@ STATIC_UI_CACHE = {
         "mr": "नमस्कार! मी SATYA आहे, आपली सरकारी योजना सहाय्यक. मी तुम्हाला आज कशी मदत करू शकतो?",
         "bn": "নমস্কার! আমি SATYA, আপনার সরকারি প্রকল্প সহকারী। আজ আমি আপনাকে কীভাবে সাহায্য করতে পারি?",
         "gu": "નમસ્તે! હું SATYA છું, તમારી સરકારી યોજના મદદનીશ. હું આજે તમને કેવી રીતે મદદ કરી શકું?",
-        "ml": "നമസ്കാരം! ഞാൻ SATYA ആണ്, നിങ്ങളുടെ സർക്കാർ പദ്ധതി സഹായി. ഇന്ന് ഞാൻ നിങ്ങൾക്ക് എങ്ങനെ സഹായിക്കും?"
+        "ml": "നമസ്കാരം! ഞാൻ SATYA ആണ്, നിങ്ങളുടെ സർക്കാർ പദ്ധതി സഹായി. ഇന്ന് ഞാൻ നിങ്ങൾക്ക് എങ്ങനെ സഹായിക്കും?",
+        "pa": "ਸਤਿ ਸ਼੍ਰੀ ਅਕਾਲ! ਮੈਂ SATYA ਹਾਂ, ਤੁਹਾਡਾ ਸਰਕਾਰੀ ਯੋਜਨਾ ਸਹਾਇਕ। ਅੱਜ ਮੈਂ ਤੁਹਾਡੀ ਕਿਵੇਂ ਮਦਦ ਕਰ ਸਕਦਾ ਹਾਂ?",
+        "or": "ନମସ୍କାର! ମୁଁ SATYA, ଆପଣଙ୍କ ସରକାରୀ ଯୋଜନା ସହାୟକ। ଆଜି ମୁଁ ଆପଣଙ୍କୁ କିପରି ସାହାଯ୍ୟ କରିପାରିବି?",
+        "as": "নমস্কাৰ! মই SATYA, আপোনাৰ চৰকাৰী আঁচনি সহায়ক। আজি মই আপোনাক কেনেকৈ সহায় কৰিব পাৰোঁ?",
+        "ur": "السلام علیکم! میں SATYA ہوں، آپ کا سرکاری اسکیم اسسٹنٹ۔ آج میں آپ کی کیسے مدد کر سکتا ہوں؟",
+        "ne": "नमस्ते! म SATYA हुँ, तपाईंको सरकारी योजना सहायक। आज म तपाईंलाई कसरी मद्दत गर्न सक्छु?",
+        "sd": "سلام! مان SATYA آهيان، توهان جو سرڪاري اسڪيم اسسٹنٽ. اڄ مان توهان جي ڪيئن مدد ڪري سگهان ٿو؟",
+        "sa": "नमस्कारः! अहं SATYA अस्मि, भवतः शासकीययोजनासहायकः। अद्य अहं भवन्तं कथं साहाय्यं कर्तुं शक्नोमि?",
+        "ks": "السلام علیکم! میں SATYA ہوں، تُہنٛز سرکاری سکیم اسسٹنٹ۔ اَز میں تُہیٛ کِتھ مدد کٔرِتھ ہیٛکس؟",
+        "kok": "नमस्कार! हांव SATYA, तुमचो सरकारी योजना सहाय्यक. आयज हांव तुमकां कशी मदत करूं येता?",
+        "doi": "नमस्ते! मैं SATYA हां, तुंदा सरकारी योजना सहायक। अज्ज मैं तुंदी किय्यां मदद करी सकदा हां?",
+        "brx": "नमस्कार! आं SATYA, नोंथांनि सरकारि फारामनि गोहो मदतगार। दिनै आं नोंथांखौ माबोरै मदत होनो हागौ?",
+        "mai": "प्रणाम! हम SATYA छी, अहाँक सरकारी योजना सहायक। आइ हम अहाँक कोना मदति कऽ सकैत छी?",
+        "mni": "খুরুমজরি! ঐ SATYA, নখোয়গী সরকারী স্কীম এসিস্টেন্ট। ঙসি ঐ নখোয়বু কমনা মতেং পাংগনি?",
+        "sat": "जोहार! इञ SATYA, आमाक् सोरकारी जोजना सहायक। तिञाक् दिन इञ आमाक् ओकतो लेका गोड़ो दाड़ेयाक् दाड़ेयां?",
     },
     "suggestions": {
+        "en": ["What is SATYA?", "How to check my eligibility?", "What is PM Kisan?", "How to get Ayushman Card?", "What is Mudra Loan?"],
         "hi": ["SATYA क्या है?", "पात्रता कैसे जांचें?", "PM किसान क्या है?", "आयुष्मान कार्ड कैसे प्राप्त करें?", "मुद्रा ऋण क्या है?"],
         "ta": ["SATYA என்றால் என்ன?", "தகுதியை எவ்வாறு சரிபார்ப்பது?", "PM கிசான் என்றால் என்ன?", "ஆயுஷ்மான் கார்டு பெறுவது எப்படி?", "முத்ரா கடன் என்றால் என்ன?"],
         "te": ["SATYA అంటే ఏమిటి?", "అర్హతను ఎలా తనిఖీ చేయాలి?", "PM కిసాన్ అంటే ఏమిటి?", "ఆయుష్మాన్ కార్డ్ ఎలా పొందాలి?", "ముద్రా లోన్ అంటే ఏమిటి?"],
@@ -42,7 +78,20 @@ STATIC_UI_CACHE = {
         "bn": ["SATYA কি?", "যোগ্যতা কিভাবে যাচাই করবেন?", "পিএম কিষাণ কি?", "আয়ুষ্মান কার্ড কীভাবে পাবেন?", "মুদ্রা ঋণ কি?"],
         "gu": ["SATYA શું છે?", "પાત્રતા કેવી રીતે તપાસવી?", "પીએમ કિસાન શું છે?", "આયુષ્માન કાર્ડ કેવી રીતે મેળવવું?", "મુદ્રા લોન શું છે?"],
         "ml": ["SATYA എന്നാൽ എന്താണ്?", "യോഗ്യത എങ്ങനെ പരിശോധിക്കാം?", "പിഎം കിസാൻ എന്നാൽ എന്താണ്?", "ആയുഷ്മാൻ കാർഡ് എങ്ങനെ ലഭിക്കും?", "മുദ്ര ലോൺ എന്നാൽ എന്താണ്?"],
-        "en": ["What is SATYA?", "How to check my eligibility?", "What is PM Kisan?", "How to get Ayushman Card?", "What is Mudra Loan?"]
+        "pa": ["SATYA ਕੀ ਹੈ?", "ਯੋਗਤਾ ਕਿਵੇਂ ਜਾਂਚੀਏ?", "PM ਕਿਸਾਨ ਕੀ ਹੈ?", "ਆਯੁਸ਼ਮਾਨ ਕਾਰਡ ਕਿਵੇਂ ਮਿਲੇ?", "ਮੁਦਰਾ ਲੋਨ ਕੀ ਹੈ?"],
+        "or": ["SATYA କ'ଣ?", "ଯୋଗ୍ୟତା କିପରି ଯାଞ୍ଚ କରିବେ?", "PM କିସାନ କ'ଣ?", "ଆୟୁଷ୍ମାନ କାର୍ଡ କିପରି ପାଇବେ?", "ମୁଦ୍ରା ଲୋନ କ'ଣ?"],
+        "as": ["SATYA কি?", "যোগ্যতা কেনেকৈ পৰীক্ষা কৰিব?", "PM কিষাণ কি?", "আয়ুষ্মান কাৰ্ড কেনেকৈ পাব?", "মুদ্ৰা ঋণ কি?"],
+        "ur": ["SATYA کیا ہے؟", "اہلیت کیسے جانچیں؟", "PM کسان کیا ہے؟", "آیوشمان کارڈ کیسے ملے؟", "مدرا لون کیا ہے؟"],
+        "ne": ["SATYA के हो?", "योग्यता कसरी जाँच गर्ने?", "PM किसान के हो?", "आयुष्मान कार्ड कसरी पाउने?", "मुद्रा ऋण के हो?"],
+        "sd": ["SATYA ڇا آهي؟", "اهليت ڪيئن جانچيو؟", "PM ڪسان ڇا آهي؟", "آيوشمان ڪارڊ ڪيئن حاصل ڪجي؟", "مدرا لون ڇا آهي؟"],
+        "sa": ["SATYA किम् अस्ति?", "पात्रता कथं परीक्षेत?", "PM किसान किम्?", "आयुष्मान् कार्ड कथं प्राप्यते?", "मुद्रा ऋणं किम्?"],
+        "ks": ["SATYA کیاہ چھُ?", "اہلیت کیتھ جانچِو؟", "PM کسان کیاہ چھُ?", "آیوشمان کارڈ کیتھ مِلی؟", "مدرا لون کیاہ چھُ؟"],
+        "kok": ["SATYA म्हणजे कितें?", "पात्रता कशी तपासची?", "PM किसान म्हणजे कितें?", "आयुष्मान कार्ड कसो मेळोवचो?", "मुद्रा कर्ज म्हणजे कितें?"],
+        "doi": ["SATYA की ऐ?", "पात्रता किय्यां जांचें?", "PM किसान की ऐ?", "आयुष्मान कार्ड किय्यां मिले?", "मुद्रा लोन की ऐ?"],
+        "brx": ["SATYA माबो?", "गोनांथि माबोरै सुं?", "PM किसान माबो?", "आयुष्मान कार्ड माबोरै मोनो?", "मुद्रा लोन माबो?"],
+        "mai": ["SATYA की अछि?", "पात्रता कोना जांचू?", "PM किसान की अछि?", "आयुष्मान कार्ड कोना भेटत?", "मुद्रा ऋण की अछि?"],
+        "mni": ["SATYA করিগী?", "যোগ্যতা কমনা চেক তৌরগে?", "PM কিষাণ করিগী?", "আয়ুষ্মান কার্ড কমনা ফংগনি?", "মুদ্রা লোন করিগী?"],
+        "sat": ["SATYA चेत् लेका?", "जोगाड़ चेत् लेका जांच?", "PM किसान चेत् लेका?", "आयुष्मान कार्ड चेत् लेका नामे?", "मुद्रा लोन चेत् लेका?"],
     },
     "fallback": {
         "en": "I'm sorry, I couldn't find an exact answer. Please try one of the suggestions below!",
@@ -53,13 +102,175 @@ STATIC_UI_CACHE = {
         "mr": "क्षमस्व, मला अचूक उत्तर सापडले नाही. कृपया खालील सूचनांपैकी एक प्रयत्न करा!",
         "bn": "দুঃখিত, আমি সঠিক উত্তর খুঁজে পাইনি। অনুগ্রহ করে নিচের পরামর্শগুলির মধ্যে একটি চেষ্টা করুন!",
         "gu": "ક્ષમા કરશો, મને ચોક્કસ જવાબ મળ્યો નથી. કૃપા કરીને નીચેના સૂચનોમાંથી કોઈ એક અજમાવો!",
-        "ml": "ക്ഷമിക്കണം, എനിക്ക് കൃത്യമായ ഉത്തരം കണ്ടെത്താനായില്ല. ദയവായി താഴെ നൽകിയിരിക്കുന്ന നിർദ്ദേശങ്ങളിൽ ഒന്ന് ശ്രമിക്കുക!"
+        "ml": "ക്ഷമിക്കണം, എനിക്ക് കൃത്യമായ ഉത്തരം കണ്ടെത്താനായില്ല. ദയവായി താഴെ നൽകിയിരിക്കുന്ന നിർദ്ദേശങ്ങളിൽ ഒന്ന് ശ്രമിക്കുക!",
+        "pa": "ਮੁਆਫ਼ ਕਰਨਾ, ਮੈਨੂੰ ਸਹੀ ਜਵਾਬ ਨਹੀਂ ਮਿਲਿਆ। ਕਿਰਪਾ ਕਰਕੇ ਹੇਠਾਂ ਦਿੱਤੇ ਸੁਝਾਵਾਂ ਵਿੱਚੋਂ ਕੋਈ ਇੱਕ ਅਜ਼ਮਾਓ!",
+        "or": "କ୍ଷମା କରନ୍ତୁ, ମୁଁ ସଠିକ ଉତ୍ତର ଖୋଜି ପାରିଲି ନାହିଁ। ଦୟାକରି ତଳେ ଥିବା ପରାମର୍ଶରୁ ଗୋଟିଏ ଚେଷ୍ଟା କରନ୍ତୁ!",
+        "as": "ক্ষমা কৰিব, মই সঠিক উত্তৰ বিচাৰি নাপালোঁ। অনুগ্ৰহ কৰি তলৰ পৰামৰ্শসমূহৰ এটা চেষ্টা কৰক!",
+        "ur": "معذرت، مجھے صحیح جواب نہیں ملا۔ براہ کرم نیچے دیے گئے مشوروں میں سے ایک آزمائیں!",
+        "ne": "माफ गर्नुहोस्, मैले सही जवाफ फेला पार्न सकिनँ। कृपया तलका सुझावहरू मध्ये एउटा प्रयास गर्नुहोस्!",
+        "sd": "معاف ڪجو، مون کي صحيح جواب نه مليو. مھرباني ڪري ھيٺ ڏنل تجويزن مان ھڪ ڪوشش ڪريو!",
+        "sa": "क्षम्यताम्, मया सम्यक् उत्तरं न प्राप्तम्। कृपया अधोनिर्दिष्टेषु सूचनेषु एकं प्रयतताम्!",
+        "ks": "معاف کٔرِو، مےٚ صحیح جواب نہٕ مِلیو۔ مہربانی کٔرِتھ نیچٕ دِتہٕ مشورن منٛز اکھ آزمایو!",
+        "kok": "माफ करात, म्हाका अचूक जबाब मेळूंक ना। उपकार करून सकयल दिल्ल्या सुचोवण्यांतल्यान एक वापरात!",
+        "doi": "माफ करो, मिगी सही जवाब नेईं मिल्ला। मेहरबानी करियै हेठां दित्ते सुझाआं च इक अजमाओ!",
+        "brx": "नोंथांखौ खमा होनाय, आं सुफुं फिन्नाय मोन्नो नाजायाखै। अनसुलि सोमावसारनिफ्राय मोनसे गोनां नाजा होनानै!",
+        "mai": "माफ करू, हमरा सही उत्तर नहि भेटल। कृपया नीचा देल सुझाव मे सँ एकटा प्रयास करू!",
+        "mni": "করম্না, ঐনা অচুম্বা পাওরিব ফংলবদি। চানবীদুনা মখাদা পীরিবশীংদগী অমা অমা হোকচনবীরক্কদৌরিগা!",
+        "sat": "माफ करो, इञ ठीक जबाब नेड़ा बाड़ायाक् दाड़ेयाक् काना। दयाते तोले दित् सुझाव रेन् होर मित् आजमाव!",
     }
 }
 
 # ============ CACHE SYSTEM ============
 
 _cache_lock = threading.Lock()
+_google_unavailable_until = 0.0
+
+MYMEMORY_LANGUAGE_CODES = {
+    'en': 'en-US',
+    'as': 'as-IN', 'bn': 'bn-IN', 'gu': 'gu-IN', 'hi': 'hi-IN',
+    'kn': 'kn-IN', 'ks': 'kas-IN', 'kok': 'kok-IN', 'mai': 'mai-IN',
+    'ml': 'ml-IN', 'mni': 'mni-IN', 'mr': 'mr-IN', 'ne': 'ne-NP',
+    'or': 'or-IN', 'pa': 'pa-IN', 'sa': 'sa-IN', 'sat': 'sat-IN',
+    'sd': 'sd-PK', 'ta': 'ta-IN', 'te': 'te-IN', 'ur': 'ur-PK',
+    'brx': 'as-IN', 'doi': 'hi-IN',
+}
+
+
+GOOGLE_LANG_MAP = {
+    'kok': 'gom', 'brx': 'as', 'doi': 'hi', 'ks': 'ur', 'mai': 'bho',
+    'mni': 'bn', 'sat': 'bn', 'en': 'en',
+}
+
+
+# ============ LOW-LEVEL TRANSLATORS (ordered fastest → slowest) ============
+
+def _translate_with_google_gtx(text, target_lang, source_lang='en'):
+    """FASTEST translator – direct HTTP call to Google, no library, no lock."""
+    google_source = GOOGLE_LANG_MAP.get(source_lang, source_lang)
+    google_lang = GOOGLE_LANG_MAP.get(target_lang, target_lang)
+    url = (
+        'https://translate.googleapis.com/translate_a/single'
+        f'?client=gtx&sl={google_source}&tl={google_lang}&dt=t&q={urllib.parse.quote(text)}'
+    )
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=4) as resp:
+            result = json.loads(resp.read().decode('utf-8'))
+        translated = ''.join(part[0] for part in result[0] if part[0])
+        return translated if translated else None
+    except Exception:
+        return None
+
+
+def _translate_with_deep_translator(text, target_lang):
+    """FALLBACK – uses deep-translator library. Slower but reliable."""
+    global _google_unavailable_until
+    if time.monotonic() < _google_unavailable_until:
+        return None
+    try:
+        translated = GoogleTranslator(source='en', target=target_lang).translate(text)
+        if translated and translated.strip() != text.strip() and "Error 500" not in str(translated):
+            return translated
+    except TooManyRequests:
+        _google_unavailable_until = time.monotonic() + 60
+    except Exception:
+        pass
+    return None
+
+
+def _translate_with_bhashini(text, source_lang, target_lang):
+    """Single-text Bhashini translation."""
+    inference_key = os.getenv('BHASHINI_INFERENCE_KEY')
+    if not inference_key or not text or source_lang == target_lang:
+        return None
+    payload = {
+        'pipelineTasks': [{'taskType': 'translation', 'config': {
+            'language': {'sourceLanguage': source_lang, 'targetLanguage': target_lang},
+            'serviceId': 'ai4bharat/indictrans-v2-all-gpu--t4',
+        }}],
+        'inputData': {'input': [{'source': text}]},
+    }
+    try:
+        response = _http_session.post(
+            'https://dhruva-api.bhashini.gov.in/services/inference/pipeline',
+            headers={'Authorization': inference_key},
+            json=payload, timeout=5,
+        )
+        if response.status_code != 200:
+            return None
+        outputs = response.json().get('pipelineResponse', [{}])[0].get('output', [])
+        translated = str(outputs[0].get('target', '')).strip() if outputs else ''
+        return translated if translated and translated.casefold() != text.casefold() else None
+    except Exception:
+        return None
+
+
+def _translate_batch_with_bhashini(texts, source_lang, target_lang):
+    """NATIVE Bhashini batch API – translates ALL texts in ONE HTTP call."""
+    inference_key = os.getenv('BHASHINI_INFERENCE_KEY')
+    if not inference_key or not texts or source_lang == target_lang:
+        return None
+    # Bhashini doesn't support some languages
+    unsupported = {'kok'}
+    if target_lang in unsupported or source_lang in unsupported:
+        return None
+    payload = {
+        'pipelineTasks': [{'taskType': 'translation', 'config': {
+            'language': {'sourceLanguage': source_lang, 'targetLanguage': target_lang},
+            'serviceId': 'ai4bharat/indictrans-v2-all-gpu--t4',
+        }}],
+        'inputData': {'input': [{'source': t} for t in texts]},
+    }
+    try:
+        response = _http_session.post(
+            'https://dhruva-api.bhashini.gov.in/services/inference/pipeline',
+            headers={'Authorization': inference_key},
+            json=payload, timeout=12,
+        )
+        if response.status_code != 200:
+            return None
+        outputs = response.json().get('pipelineResponse', [{}])[0].get('output', [])
+        if len(outputs) != len(texts):
+            return None
+        results = []
+        for src, out in zip(texts, outputs):
+            translated = str(out.get('target', '')).strip()
+            if translated and translated.casefold() != src.casefold():
+                results.append(translated)
+            else:
+                results.append(None)  # Mark as failed
+        return results
+    except Exception:
+        return None
+
+
+# ============ FAST SINGLE-TEXT TRANSLATOR ============
+
+def _translate_single(text, target_lang):
+    """Translate a single string. GTX FIRST (fastest), then fallbacks. NO LOCK."""
+    if target_lang not in SUPPORTED_LANGUAGES or target_lang == 'en':
+        return text
+
+    # 1. Google GTX – fastest (~100-300ms), no library, no rate-limit
+    result = _translate_with_google_gtx(text, target_lang)
+    if result and result.strip() and result.strip().casefold() != text.strip().casefold():
+        return result
+
+    # 2. deep-translator GoogleTranslator – slower but different endpoint
+    result = _translate_with_deep_translator(text, target_lang)
+    if result:
+        return result
+
+    # 3. Bhashini – last resort for Indic languages
+    result = _translate_with_bhashini(text, 'en', target_lang)
+    if result:
+        return result
+
+    return text
+
+
+# ============ CACHE PERSISTENCE ============
+
 _cache_dirty = False
 
 def load_cache():
@@ -73,34 +284,38 @@ def load_cache():
 
 _last_save_time = 0
 
-def save_cache_to_disk(force=False):
+def _do_save_cache():
+    """Internal: actual disk write, runs in background thread."""
     global _cache_dirty, _last_save_time
-    if not _cache_dirty:
-        return
-        
-    current_time = time.time()
-    # Throttling disk writes to every 10 seconds unless forced
-    if not force and (current_time - _last_save_time < 10):
-        return
-        
     os.makedirs(CACHE_DIR, exist_ok=True)
     try:
         with _cache_lock:
             with open(CACHE_FILE, 'w', encoding='utf-8') as f:
                 json.dump(PERSISTENT_CACHE, f, ensure_ascii=False, indent=2)
             _cache_dirty = False
-            _last_save_time = current_time
+            _last_save_time = time.time()
     except:
         pass
+
+def save_cache_to_disk(force=False):
+    global _cache_dirty, _last_save_time
+    if not _cache_dirty:
+        return
+    current_time = time.time()
+    if not force and (current_time - _last_save_time < 10):
+        return
+    # Non-blocking: save in background thread
+    threading.Thread(target=_do_save_cache, daemon=True).start()
 
 def cache_put(key, value):
     global _cache_dirty
     # Safety Check: Never cache error messages as translations
     if not value or "Error 500" in str(value) or "Server Error" in str(value):
         return
-        
+
     with _cache_lock:
         PERSISTENT_CACHE[key] = value
+        _CACHE_INDEX[key.lower()] = value
         _cache_dirty = True
 
 # For backward compat with prime script
@@ -108,23 +323,64 @@ def save_cache(cache_data):
     save_cache_to_disk()
 
 PERSISTENT_CACHE = load_cache()
-SUPPORTED_LANGUAGES = {'en', 'hi', 'ta', 'te', 'kn', 'mr', 'bn', 'gu', 'ml'}
+SUPPORTED_LANGUAGES = SUPPORTED_LANGUAGE_CODES
 
-# ============ DIRECT GOOGLE TRANSLATE (no googletrans library) ============
-def _translate_single(text, target_lang):
-    """Translate a single string using deep-translator with retry logic."""
-    for attempt in range(3):
-        try:
-            translator = GoogleTranslator(source='auto', target=target_lang)
-            translated = translator.translate(text)
-            if translated and "Error 500" not in str(translated):
-                return translated
-        except Exception as e:
-            if "TooManyRequests" in str(e) or "429" in str(e):
-                break # Hard abort on rate limits
-            pass
-        time.sleep(0.5)
-    return text  # Return original on all failures
+# Build a lowercase lookup index at startup for O(1) case-insensitive lookups
+_CACHE_INDEX = {k.lower(): v for k, v in PERSISTENT_CACHE.items()}
+
+
+# ============ SCHEME STEPS TRANSLATOR ============
+
+def translate_scheme_steps(texts, target_lang):
+    """Translate scheme application steps using the Indic provider and safe cache keys."""
+    if not texts or target_lang not in SUPPORTED_LANGUAGES or target_lang == 'en':
+        return texts
+
+    results = [None] * len(texts)
+    pending = []
+    for index, text in enumerate(texts):
+        cache_key = f"scheme_step:{target_lang}:{text}"
+        cached = PERSISTENT_CACHE.get(cache_key)
+        if cached and cached != text:
+            results[index] = cached
+        else:
+            pending.append((index, text, cache_key))
+
+    # Try Bhashini native batch first
+    if pending:
+        pending_texts = [text for _, text, _ in pending]
+        batch_result = _translate_batch_with_bhashini(pending_texts, 'en', target_lang)
+        if batch_result and len(batch_result) == len(pending):
+            for (index, source, cache_key), translated in zip(pending, batch_result):
+                if translated:
+                    results[index] = translated
+                    cache_put(cache_key, translated)
+
+    # Fallback: parallel GTX for anything still missing
+    still_pending = [(i, s, ck) for i, s, ck in pending if results[i] is None]
+    if still_pending:
+        def _gtx_one(item):
+            index, source, cache_key = item
+            translated = _translate_with_google_gtx(source, target_lang)
+            if translated and translated.strip() and translated.strip().casefold() != source.casefold():
+                return index, translated.strip(), cache_key
+            return index, source, cache_key
+        futures = [_translate_pool.submit(_gtx_one, item) for item in still_pending]
+        for f in as_completed(futures):
+            try:
+                index, translated, cache_key = f.result()
+                results[index] = translated
+                if translated != still_pending[0][1]:  # != source
+                    cache_put(cache_key, translated)
+            except:
+                pass
+        # Fill any remaining Nones
+        for index, source, _ in still_pending:
+            if results[index] is None:
+                results[index] = source
+
+    save_cache_to_disk()
+    return results
 
 # ============ LANGUAGE DETECTION ============
 
@@ -132,10 +388,13 @@ def detect_language(text):
     if not text or len(text.strip()) < 2:
         return 'en'
     scripts = {
-        'hi': r'[\u0900-\u097F]', 'bn': r'[\u0980-\u09FF]',
-        'ta': r'[\u0B80-\u0BFF]', 'te': r'[\u0C00-\u0C7F]',
-        'kn': r'[\u0C80-\u0CFF]', 'ml': r'[\u0D00-\u0D7F]',
-        'gu': r'[\u0A80-\u0AFF]'
+        'hi': r'[\u0900-\u097F]', 'as': r'[\u0980-\u09FF]',
+        'bn': r'[\u0980-\u09FF]', 'gu': r'[\u0A80-\u0AFF]',
+        'or': r'[\u0B00-\u0B7F]', 'ta': r'[\u0B80-\u0BFF]',
+        'te': r'[\u0C00-\u0C7F]', 'kn': r'[\u0C80-\u0CFF]',
+        'ml': r'[\u0D00-\u0D7F]', 'pa': r'[\u0A00-\u0A7F]',
+        'ur': r'[\u0600-\u06FF]', 'ks': r'[\u0600-\u06FF]',
+        'sat': r'[\u1C50-\u1C7F]'
     }
     for lang, pattern in scripts.items():
         if re.search(pattern, text):
@@ -148,20 +407,48 @@ def detect_language(text):
 
 # ============ PUBLIC TRANSLATION FUNCTIONS ============
 
-def translate_to_english(text):
-    cache_key = f"to_en:{text}"
-    if cache_key in PERSISTENT_CACHE:
-        return PERSISTENT_CACHE[cache_key]
-    
+def translate_to_english(text, source_lang=None):
+    """Translate text to English. GTX first (fastest), then fallbacks."""
+    if not text:
+        return text
+
+    source_lang = source_lang if source_lang in SUPPORTED_LANGUAGES else None
+    cache_key = f"to_en:{source_lang}:{text}" if source_lang else f"to_en:{text}"
+
+    # Check cache first
+    cached = PERSISTENT_CACHE.get(cache_key)
+    if cached:
+        return cached
+    cached = _CACHE_INDEX.get(cache_key.lower())
+    if cached:
+        return cached
+
+    # 1. GTX first – fastest
+    result = _translate_with_google_gtx(text, 'en', source_lang or 'auto')
+    if result and result.strip() and result != text:
+        cache_put(cache_key, result)
+        save_cache_to_disk()
+        return result
+
+    # 2. deep-translator fallback
     try:
-        translator = GoogleTranslator(source='auto', target='en')
+        translator = GoogleTranslator(source=source_lang or 'auto', target='en')
         result = translator.translate(text)
         if result and result != text:
             cache_put(cache_key, result)
             save_cache_to_disk()
             return result
-    except Exception as e:
+    except Exception:
         pass
+
+    # 3. Bhashini fallback
+    if source_lang and source_lang != 'en':
+        result = _translate_with_bhashini(text, source_lang, 'en')
+        if result:
+            cache_put(cache_key, result)
+            save_cache_to_disk()
+            return result
+
     return text
 
 def translate_from_english(text, target_lang):
@@ -171,10 +458,14 @@ def translate_from_english(text, target_lang):
 
     cache_key = f"{target_lang}:{text}"
     cached = PERSISTENT_CACHE.get(cache_key)
-    if cached:
+    if cached and cached != text:
+        return cached
+    # Case-insensitive fallback
+    cached = _CACHE_INDEX.get(cache_key.lower())
+    if cached and cached != text:
         return cached
 
-    # For long compound text, split and translate parts in parallel
+    # For long compound text, split and translate parts in batch
     if len(text) > 100 and ('. ' in text or '\n' in text):
         separator = '\n' if '\n' in text else '. '
         parts = [p.strip() for p in text.split(separator) if p.strip()]
@@ -185,16 +476,16 @@ def translate_from_english(text, target_lang):
             save_cache_to_disk()
         return result
 
-    # Single text
+    # Single text – fast path
     result = _translate_single(text, target_lang)
-    if result:
+    if result and result != text:
         cache_put(cache_key, result)
         save_cache_to_disk()
     return result
 
 
 def translate_batch_from_english(texts, target_lang):
-    """Batch translation. Cache-first, then parallel API calls for misses."""
+    """Batch translation. Cache-first, then Bhashini batch API, then parallel GTX."""
     if not texts or not target_lang or target_lang == 'en':
         return texts
 
@@ -257,7 +548,6 @@ def translate_batch_from_english(texts, target_lang):
         "Ujjwala": {"hi": "उज्ज्वला", "ta": "உஜ்வாலா", "te": "ఉజ్వల", "mr": "उज्ज्वला"},
         "Mudra": {"hi": "मुद्रा", "ta": "முத்ரா", "te": "ముద్రా", "mr": "मुद्रा"},
         "Aadhaar": {"hi": "आधार", "ta": "ஆதார்", "te": "ఆధార్", "mr": "आधार", "kn": "ಆಧಾರ್", "ml": "ಆಧಾರ್", "gu": "આધાર", "bn": "আধার"},
-
     }
 
     # --- Term Mapping (Bidirectional Enhancement) ---
@@ -279,14 +569,14 @@ def translate_batch_from_english(texts, target_lang):
         if not frag:
             fragment_results[frag] = frag
             continue
-            
+
         frag_clean = frag.strip()
         frag_lower = frag_clean.lower()
-            
+
         # Apply Term Mapping first
         if frag_lower in TERM_MAPPING:
             frag_clean = TERM_MAPPING[frag_lower]
-            
+
         # Check hardcoded fixes first
         if frag_clean in PROPER_NOUN_FIXES and target_lang in PROPER_NOUN_FIXES[frag_clean]:
             fragment_results[frag] = PROPER_NOUN_FIXES[frag_clean][target_lang]
@@ -294,56 +584,52 @@ def translate_batch_from_english(texts, target_lang):
 
         cache_key = f"{target_lang}:{frag_clean}"
         cached = PERSISTENT_CACHE.get(cache_key)
-        
+
         if not cached:
-            # Case-insensitive fallback
-            search_key = cache_key.lower()
-            with _cache_lock:
-                cache_items = list(PERSISTENT_CACHE.items())
-            for k, v in cache_items:
-                if k.lower() == search_key:
-                    cached = v
-                    break
-                    
-        if cached:
+            # O(1) case-insensitive lookup via pre-built index
+            cached = _CACHE_INDEX.get(cache_key.lower())
+
+        if cached and cached != frag_clean:
             fragment_results[frag] = cached
         else:
             to_translate.append(frag_clean)
 
-    # 3. Translate missing fragments iteratively in grouped batches
+    # 3. Translate missing fragments – Bhashini batch first, then parallel GTX
     if to_translate:
-        batch_size = 10 # Send 10 strings per HTTP request
-        grouped_batches = [to_translate[i:i + batch_size] for i in range(0, len(to_translate), batch_size)]
-        
-        for g_batch in grouped_batches:
-            combined_text = "\n[SEP]\n".join(g_batch)
-            res = _translate_single(combined_text, target_lang)
-            
-            # If the proxy failed entirely, do not map or cache as success
-            if not res or res.strip() == combined_text.strip():
-                for frag in g_batch:
-                    fragment_results[frag] = frag
-                continue
-                
-            # Split by the separator, handling potential variations in whitespace/format
-            translated_arr = [s.strip() for s in re.split(r'\n?\s*\[SEP\]\s*\n?', res) if s.strip()]
-            
-            # If lengths match, we are good. If not, try a fallback split or just use individual translations
-            if len(translated_arr) != len(g_batch):
-                # Fallback to newline if [SEP] was mangled
-                translated_arr = [s.strip() for s in res.split('\n') if s.strip()]
-                
-            # Map results if segment count matches
-            if len(translated_arr) == len(g_batch):
-                for orig, trans in zip(g_batch, translated_arr):
-                    # Clean up any potential artifacts
-                    trans_clean = trans.strip(' "\"\'')
-                    fragment_results[orig] = trans_clean
-                    cache_put(f"{target_lang}:{orig}", trans_clean)
-            else:
-                # If batching fails, we could translate individually, but for now we fallback to English
-                # to avoid misaligned translations which are worse than English.
-                for frag in g_batch:
+        # === STRATEGY A: Try Bhashini native batch API (ONE HTTP call for ALL texts) ===
+        bhashini_results = _translate_batch_with_bhashini(to_translate, 'en', target_lang)
+        if bhashini_results and len(bhashini_results) == len(to_translate):
+            still_missing = []
+            for frag, translated in zip(to_translate, bhashini_results):
+                if translated:
+                    fragment_results[frag] = translated
+                    cache_put(f"{target_lang}:{frag}", translated)
+                else:
+                    still_missing.append(frag)
+        else:
+            still_missing = list(to_translate)
+
+        # === STRATEGY B: Parallel GTX for anything Bhashini missed ===
+        if still_missing:
+            def _gtx_translate(frag):
+                result = _translate_with_google_gtx(frag, target_lang)
+                if result and result.strip() and result.strip().casefold() != frag.strip().casefold():
+                    return frag, result.strip()
+                # Last resort: deep-translator
+                result = _translate_with_deep_translator(frag, target_lang)
+                if result:
+                    return frag, result
+                return frag, frag
+
+            futures = {_translate_pool.submit(_gtx_translate, frag): frag for frag in still_missing}
+            for future in as_completed(futures):
+                try:
+                    orig, translated = future.result()
+                    fragment_results[orig] = translated
+                    if translated != orig:
+                        cache_put(f"{target_lang}:{orig}", translated)
+                except Exception:
+                    frag = futures[future]
                     fragment_results[frag] = frag
 
         save_cache_to_disk()

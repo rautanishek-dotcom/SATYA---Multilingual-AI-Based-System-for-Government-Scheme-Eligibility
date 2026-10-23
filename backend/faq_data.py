@@ -2,226 +2,310 @@
 # Each FAQ has a 'scheme' tag matching scheme names in the database for precise matching.
 
 ENGLISH_FAQS = [
-    # ===== GENERAL & ABOUT SATYA (10) =====
-    {"question": "What is SATYA?", "answer": "SATYA (System for AI-based Transparency and Yielding Assistance) is an AI-powered platform helping Indian citizens discover schemes, verify documents, and check eligibility instantly.", "category": "general", "scheme": ""},
-    {"question": "How to check eligibility?", "answer": "Fill your profile, verify documents with AI, and get personalized scheme lists instantly.", "category": "general", "scheme": ""},
-    {"question": "How does document verification work?", "answer": "Our AI uses neural OCR and QR scanning to verify Aadhaar, PAN, and Income Certificates in real-time.", "category": "general", "scheme": ""},
-    {"question": "Is my data safe with SATYA?", "answer": "Yes, SATYA uses end-to-end encryption and does not store sensitive document images after verification.", "category": "general", "scheme": ""},
-    {"question": "What documents can be verified?", "answer": "Aadhaar, PAN Card, Income Certificate, and Caste Certificate can be verified using our AI scanner.", "category": "general", "scheme": ""},
-    {"question": "How to use the chatbot?", "answer": "Type your question or use suggested chips. The chatbot automatically detects your language.", "category": "general", "scheme": ""},
-    {"question": "What happens after document verification?", "answer": "Your eligibility score updates and the system recommends schemes tailored to your profile.", "category": "general", "scheme": ""},
-    {"question": "How to use the QR scanner?", "answer": "Allow camera access, then point your camera at the QR code on your Aadhaar or PAN card.", "category": "general", "scheme": ""},
-    {"question": "Which languages does SATYA support?", "answer": "SATYA supports 9 languages: English, Hindi, Tamil, Telugu, Kannada, Marathi, Bengali, Gujarati, and Malayalam.", "category": "general", "scheme": ""},
-    {"question": "Does SATYA charge any fee?", "answer": "No, SATYA is completely free for all Indian citizens.", "category": "general", "scheme": ""},
+    # ===============================================================
+    # ===== SATYA PLATFORM — GENERAL (15) =====
+    # ===============================================================
+    {"question": "What is SATYA?", "answer": "SATYA (System for AI-based Transparency and Yielding Assistance) is an AI-powered platform helping Indian citizens discover government schemes, verify documents with AI, and check eligibility instantly across all states.", "category": "general", "scheme": ""},
+    {"question": "How does SATYA work?", "answer": "SATYA uses AI-powered document verification, profile-based eligibility matching, and a multilingual chatbot to help you find and apply for government schemes you qualify for.", "category": "general", "scheme": ""},
+    {"question": "Is SATYA free to use?", "answer": "Yes, SATYA is completely free for all Indian citizens. There are no hidden charges for eligibility checking, document verification, or scheme discovery.", "category": "general", "scheme": ""},
+    {"question": "Which languages does SATYA support?", "answer": "SATYA supports all 23 official languages of India including Hindi, Bengali, Tamil, Telugu, Marathi, Gujarati, Kannada, Malayalam, Punjabi, Odia, Assamese, Urdu, Sanskrit, Sindhi, Nepali, Manipuri, Konkani, Dogri, Bodo, Maithili, Santali, and Kashmiri.", "category": "general", "scheme": ""},
+    {"question": "How to change language in SATYA?", "answer": "Click the language selector in the navigation bar at the top of the page. Select your preferred language and the entire platform including this chatbot will switch to that language.", "category": "general", "scheme": ""},
+    {"question": "Is my data safe with SATYA?", "answer": "Yes, SATYA uses end-to-end encryption. Your document images are processed by AI for verification and are stored securely in your personal Document Vault with OTP protection.", "category": "general", "scheme": ""},
+    {"question": "How to contact SATYA support?", "answer": "Use the Contact Us page link in the footer for any platform-related queries, or ask me any question through this chatbot.", "category": "general", "scheme": ""},
+    {"question": "What are the main features of SATYA?", "answer": "SATYA has 5 main features: 1) AI Document Verification 2) Eligibility Engine to check scheme eligibility 3) Government Schemes Directory with 400+ schemes 4) Secure Document Vault with OTP protection 5) Multilingual AI chatbot supporting 23 languages.", "category": "general", "scheme": ""},
+    {"question": "Who built SATYA?", "answer": "SATYA was built as a final year project to bridge the gap between citizens and government scheme benefits using AI and multilingual technology.", "category": "general", "scheme": ""},
+    {"question": "Can I use SATYA on my mobile phone?", "answer": "Yes, SATYA is fully responsive and works perfectly on mobile phones, tablets, and desktop computers through your web browser.", "category": "general", "scheme": ""},
+    {"question": "How to create a SATYA account?", "answer": "Click the Register button on the home page. Fill in your name, email, and password. Once registered, you can log in to access all features including document verification, eligibility check, and the secure vault.", "category": "general", "scheme": ""},
+    {"question": "How to login to SATYA?", "answer": "Click Login on the home page, enter your registered email and password. Once logged in you can access Document Vault, Check Eligibility, and view your verified documents.", "category": "general", "scheme": ""},
+    {"question": "What happens if I forget my password?", "answer": "Use the 'Forgot Password' link on the login page. An OTP will be sent to your registered email to reset your password securely.", "category": "general", "scheme": ""},
+    {"question": "What is SATYA's admin panel?", "answer": "The admin panel allows administrators to manage schemes (add, edit, delete), view registered users, and monitor the platform. Regular users do not have admin access.", "category": "general", "scheme": ""},
+    {"question": "How many schemes does SATYA have?", "answer": "SATYA has a database of 400+ government schemes from central government and all Indian states. New schemes are added regularly.", "category": "general", "scheme": ""},
 
+    # ===============================================================
+    # ===== DOCUMENT VAULT (20) =====
+    # ===============================================================
+    {"question": "What is the Document Vault?", "answer": "The Document Vault is SATYA's secure digital locker where your AI-verified documents (Aadhaar, Caste Certificate) are stored safely. It is protected by OTP verification every time you access it.", "category": "vault", "scheme": ""},
+    {"question": "How to access the Document Vault?", "answer": "Go to the Document Vault page from the navigation bar. You will need to verify your identity with an OTP sent to your registered email before accessing your stored documents.", "category": "vault", "scheme": ""},
+    {"question": "Why is OTP required for the Document Vault?", "answer": "OTP verification adds an extra layer of security to ensure only you can access your sensitive identity documents. A 6-digit code is sent to your registered email.", "category": "vault", "scheme": ""},
+    {"question": "What documents can I store in the Vault?", "answer": "You can store AI-verified Aadhaar Cards and Caste Certificates in the vault. Documents are stored only after passing all security, quality, and identity verification checks.", "category": "vault", "scheme": ""},
+    {"question": "How to upload documents to the Vault?", "answer": "Go to the Document Vault page, click 'Upload Document', select your Aadhaar or Caste Certificate image (JPG, PNG, or PDF up to 2MB), and the AI will automatically verify and store it.", "category": "vault", "scheme": ""},
+    {"question": "What verification checks does the Vault perform?", "answer": "The vault performs: 1) Document quality check (blur, crop detection) 2) OCR text extraction 3) QR code scanning and validation 4) Identity matching 5) Fraud detection — all powered by AI.", "category": "vault", "scheme": ""},
+    {"question": "Can I delete documents from the Vault?", "answer": "Documents that have been verified and stored are linked to your identity lock. Your Aadhaar identity can be reset from the profile settings if needed, but this is a permanent action.", "category": "vault", "scheme": ""},
+    {"question": "What is the Identity Lock?", "answer": "After your Aadhaar is verified, SATYA creates a permanent Identity Lock that links your verified identity to your account. This prevents anyone else from using your documents.", "category": "vault", "scheme": ""},
+    {"question": "How to reset my Identity Lock?", "answer": "Go to Document Vault settings and click 'Reset Identity Verification'. Warning: This permanently erases your stored identity verification data and cannot be undone.", "category": "vault", "scheme": ""},
+    {"question": "What is Caste Category Verification?", "answer": "When you upload a Caste Certificate, the AI extracts and verifies your caste category (General, OBC, SC, ST). This information is used for accurate scheme eligibility matching.", "category": "vault", "scheme": ""},
+    {"question": "How to reset my Caste Verification?", "answer": "Go to vault settings and click 'Reset Caste Identity'. This permanently removes your verified caste reservation status and scheme eligibility will fall back to manual selection.", "category": "vault", "scheme": ""},
+    {"question": "Is the Vault available offline?", "answer": "No, the Document Vault requires an internet connection to access your stored documents and perform OTP verification.", "category": "vault", "scheme": ""},
+    {"question": "What file formats does the Vault accept?", "answer": "The vault accepts JPG, PNG, and PDF files with a maximum size of 2MB. Make sure your document image is clear, not blurry, and the QR code (if any) is visible.", "category": "vault", "scheme": ""},
+    {"question": "What is the document hash in the Vault?", "answer": "Each document stored in the vault gets a unique cryptographic hash — a digital fingerprint that ensures the document hasn't been tampered with after verification.", "category": "vault", "scheme": ""},
+    {"question": "What is the Verification Trail?", "answer": "The verification trail shows the complete history of all checks performed on your document — OCR extraction, quality check, QR validation, identity match, and fraud detection results.", "category": "vault", "scheme": ""},
+    {"question": "How does AI verify my Aadhaar?", "answer": "Our AI scans your Aadhaar image to: 1) Extract text using OCR 2) Detect and decode the QR code 3) Match your name and details 4) Check for forgery or manipulation. The process takes 5-10 seconds.", "category": "vault", "scheme": ""},
+    {"question": "What if my document upload fails?", "answer": "Make sure: 1) The file is JPG, PNG, or PDF 2) Size is under 2MB 3) Image is clear and not blurry 4) QR code is visible (for Aadhaar) 5) The document is genuine. Try recapturing the image if it fails.", "category": "vault", "scheme": ""},
+    {"question": "Can someone else access my Vault?", "answer": "No. Your vault is protected by your account password and OTP verification. Every access attempt requires a fresh OTP sent to your registered email.", "category": "vault", "scheme": ""},
+    {"question": "What does the risk score in the Vault mean?", "answer": "Each document gets a risk assessment: Low Risk (safe, fully verified), Medium Risk (some minor quality issues), and High Risk (suspicious, potential fraud detected).", "category": "vault", "scheme": ""},
+    {"question": "How to share verified documents?", "answer": "Currently, SATYA stores verified documents in your personal vault. A shared verification feature allows the Check Eligibility section to reuse vault OTP verification.", "category": "vault", "scheme": ""},
+
+    # ===============================================================
+    # ===== CHECK ELIGIBILITY / ELIGIBILITY ENGINE (20) =====
+    # ===============================================================
+    {"question": "How to check eligibility?", "answer": "Go to 'Check Eligibility' from the navigation bar. Fill in your personal details (age, income, state, category, etc.), verify your Aadhaar, and click 'Find Schemes Now' to see all schemes you qualify for.", "category": "eligibility", "scheme": ""},
+    {"question": "What is the Eligibility Engine?", "answer": "The Eligibility Engine is SATYA's AI-powered matching system that compares your profile details with eligibility rules of 400+ government schemes to find the ones you qualify for.", "category": "eligibility", "scheme": ""},
+    {"question": "What details are needed for eligibility check?", "answer": "You need: Full Name, Date of Birth, Gender, State, District, Annual Income, Occupation, Category (General/OBC/SC/ST), Education Level, and optionally — Disability status, Ration Card type, and Business details.", "category": "eligibility", "scheme": ""},
+    {"question": "How does the eligibility matching work?", "answer": "The engine checks your profile against each scheme's rules: age limits, income ceiling, category reservation, state restrictions, gender requirements, occupation type, and special conditions. Matching schemes are shown with a score.", "category": "eligibility", "scheme": ""},
+    {"question": "What does the eligibility score mean?", "answer": "The eligibility score shows how well your profile matches a scheme's criteria: Eligible (you meet all criteria), Partially Eligible (you match most criteria), or Not Eligible (key criteria not met with reasons shown).", "category": "eligibility", "scheme": ""},
+    {"question": "Why do I need Aadhaar for eligibility check?", "answer": "Aadhaar verification ensures your identity is authentic. It's required to unlock the final eligibility results and prevents fraud. Your Aadhaar is verified by AI and not shared with anyone.", "category": "eligibility", "scheme": ""},
+    {"question": "Can I check eligibility without Aadhaar?", "answer": "You can fill in the profile form without Aadhaar, but to view the final scheme results, Aadhaar verification is required. This is a one-time process.", "category": "eligibility", "scheme": ""},
+    {"question": "How to apply for a scheme from SATYA?", "answer": "After finding eligible schemes, click 'View Scheme' to see full details. Click 'Apply on Official Portal' to be redirected to the government website where you can submit your application.", "category": "eligibility", "scheme": ""},
+    {"question": "What is Profile Assessment?", "answer": "Profile Assessment is the form where you fill in your personal, income, location, occupation, and family details. This information is used by the eligibility engine to match you with schemes.", "category": "eligibility", "scheme": ""},
+    {"question": "How to fill the profile form?", "answer": "The form has sections: 1) Personal Information (name, DOB, gender) 2) Location Details (state, district) 3) Income & Financial Details 4) Occupation Details 5) Education & Family. Fill all sections and click 'Find Schemes Now'.", "category": "eligibility", "scheme": ""},
+    {"question": "What if no schemes match my profile?", "answer": "If no schemes match, try: 1) Double-checking your income and category details 2) Changing your state to 'All India' for central schemes 3) Updating your occupation or education details. Some schemes may have very specific criteria.", "category": "eligibility", "scheme": ""},
+    {"question": "Can I check eligibility for a different state?", "answer": "Yes! Select any state in the profile form. Central schemes are available for all states. You can also check state-specific schemes by selecting the particular state.", "category": "eligibility", "scheme": ""},
+    {"question": "What is the Declaration in eligibility check?", "answer": "The declaration confirms that all information provided is true. You must accept it before seeing results. SATYA's eligibility matching is indicative and not a guarantee of benefit sanction.", "category": "eligibility", "scheme": ""},
+    {"question": "How are scheme deadlines shown?", "answer": "On the eligibility results page, schemes with upcoming deadlines show a countdown: 'Urgent' (less than 7 days), 'Closing Soon' (7-30 days), and 'Upcoming' deadlines. Apply before they expire!", "category": "eligibility", "scheme": ""},
+    {"question": "What is the difference between Eligible and Partially Eligible?", "answer": "Eligible means you meet ALL criteria. Partially Eligible means you meet most criteria but may not fully satisfy one condition (e.g., income slightly above limit). Check the specific reasons shown.", "category": "eligibility", "scheme": ""},
+    {"question": "Can I save my eligibility results?", "answer": "Your eligible schemes are shown on the results page after verification. You can bookmark the page or take a screenshot. The system remembers your verified identity for future checks.", "category": "eligibility", "scheme": ""},
+    {"question": "How often should I check eligibility?", "answer": "We recommend checking periodically as new schemes are added by the government. Your circumstances (age, income) may also change, qualifying you for different schemes.", "category": "eligibility", "scheme": ""},
+    {"question": "What BPL status options are available?", "answer": "SATYA supports Antyodaya Anna Yojana (AAY), Priority Household (PHH), and Non-Priority (NPHH) ration card types for eligibility matching.", "category": "eligibility", "scheme": ""},
+    {"question": "How does disability eligibility work?", "answer": "If you select 'Differently Abled', you can enter your disability percentage and type (Visual, Hearing, Locomotor, etc.). Schemes typically require minimum 40% disability. Upload a disability certificate if available.", "category": "eligibility", "scheme": ""},
+    {"question": "What is the 'Find Schemes Now' button?", "answer": "This is the main action button on the eligibility page. After filling your profile and accepting the declaration, click it to trigger the AI matching engine and see all government schemes you qualify for.", "category": "eligibility", "scheme": ""},
+
+    # ===============================================================
+    # ===== DOCUMENT VERIFICATION / AI SCANNING (15) =====
+    # ===============================================================
+    {"question": "How does document verification work?", "answer": "Upload your document (Aadhaar/Caste Certificate). The AI performs: quality check, OCR text extraction, QR code scanning, identity matching, and fraud detection — all in 5-10 seconds.", "category": "verification", "scheme": ""},
+    {"question": "What documents can be verified?", "answer": "SATYA currently verifies: 1) Aadhaar Card (front side with QR code) 2) Caste Certificate. Support for Income Certificate and PAN Card verification is planned.", "category": "verification", "scheme": ""},
+    {"question": "What is OCR extraction?", "answer": "OCR (Optical Character Recognition) is AI technology that reads text from your document image. SATYA extracts your name, Aadhaar number, date of birth, and address automatically.", "category": "verification", "scheme": ""},
+    {"question": "What is QR code verification?", "answer": "SATYA decodes the QR code on your Aadhaar card to verify that the information printed on the card matches the digitally embedded data. This detects forged or tampered documents.", "category": "verification", "scheme": ""},
+    {"question": "What happens if verification fails?", "answer": "If verification fails, check: 1) Image quality — avoid blur and glare 2) QR code must be fully visible 3) Document must be genuine 4) File must be under 2MB. Retry with a clearer image.", "category": "verification", "scheme": ""},
+    {"question": "How accurate is the AI verification?", "answer": "SATYA's AI achieves high accuracy through multi-layer checks: OCR extraction, QR validation, identity matching, and fraud detection. A confidence score is shown for each verification.", "category": "verification", "scheme": ""},
+    {"question": "What is identity matching?", "answer": "After OCR extracts your details, the AI compares the extracted name and information with your account profile to ensure the document belongs to you.", "category": "verification", "scheme": ""},
+    {"question": "What is the confidence score?", "answer": "The confidence score shows how certain the AI is about the extracted data. Higher scores mean more reliable extraction. Low confidence may indicate poor image quality or unclear text.", "category": "verification", "scheme": ""},
+    {"question": "How to take a good document photo?", "answer": "Tips: 1) Use good lighting 2) Keep the document flat, no folds 3) Capture the full document including edges 4) Avoid shadows and reflections 5) Ensure QR code is clear 6) Use the camera, not screenshots.", "category": "verification", "scheme": ""},
+    {"question": "What is fraud detection?", "answer": "SATYA's AI checks for document manipulation such as edited text, tampered QR codes, artificial artifacts, and inconsistencies between printed and digital data.", "category": "verification", "scheme": ""},
+    {"question": "Can I verify someone else's document?", "answer": "No. SATYA requires the document to belong to the logged-in user. The identity matching system ensures the document owner matches the account holder.", "category": "verification", "scheme": ""},
+    {"question": "What is the Aadhaar QR scanner?", "answer": "The Aadhaar QR scanner uses your camera or uploaded image to decode the secure QR code on Aadhaar cards. It extracts digitally signed data including name, DOB, address, and photo.", "category": "verification", "scheme": ""},
+    {"question": "How long does verification take?", "answer": "AI verification typically takes 5-10 seconds. This includes image quality analysis, OCR extraction, QR decoding, identity matching, and fraud detection.", "category": "verification", "scheme": ""},
+    {"question": "What image formats are supported for verification?", "answer": "JPG, PNG, and PDF formats are supported. Maximum file size is 2MB. For best results, use a clear photograph of the original document.", "category": "verification", "scheme": ""},
+    {"question": "What is the Verification Policy?", "answer": "Each document type has its own verification policy. Aadhaar verification includes OCR, QR validation, and identity matching. Caste Certificate verification includes OCR and caste category extraction. Documents are accepted only if all checks pass.", "category": "verification", "scheme": ""},
+
+    # ===============================================================
+    # ===== SCHEME DIRECTORY / BROWSING (15) =====
+    # ===============================================================
+    {"question": "How to browse all schemes?", "answer": "Go to the 'Schemes' page from the navigation bar. You can browse through all 400+ government schemes, search by name, filter by category, state, or scheme type.", "category": "schemes", "scheme": ""},
+    {"question": "How to search for a specific scheme?", "answer": "On the Schemes page, use the search bar to type the scheme name or keyword. Results update in real-time as you type. You can also filter by state, category, and type.", "category": "schemes", "scheme": ""},
+    {"question": "What scheme categories are available?", "answer": "Schemes are categorized as: Agriculture, Health, Housing, Education, Business, Social Welfare, Pension, and Women & Child Development. Use the category filter to browse.", "category": "schemes", "scheme": ""},
+    {"question": "What is the difference between Central and State schemes?", "answer": "Central schemes are funded by the Government of India and available nationwide. State schemes are funded and managed by individual state governments and available only in that state.", "category": "schemes", "scheme": ""},
+    {"question": "How to view scheme details?", "answer": "Click 'View Details' on any scheme card to see: Description, Eligibility Criteria, Benefits, Required Documents, Application Process, and Official Website link.", "category": "schemes", "scheme": ""},
+    {"question": "What information is shown for each scheme?", "answer": "Each scheme page shows: Name, Description, Eligibility (age, income, category), Key Benefits, Priority Groups, Required Documents, Step-by-Step Application Process, and the Official Portal link.", "category": "schemes", "scheme": ""},
+    {"question": "How to apply for a scheme?", "answer": "On the scheme details page, click 'Apply on Official Portal'. You will be redirected to the secure government website where you can submit your application with required documents.", "category": "schemes", "scheme": ""},
+    {"question": "Are scheme names translated?", "answer": "Yes! Scheme names, descriptions, and all information are available in all 23 languages. The platform translates content based on your selected language.", "category": "schemes", "scheme": ""},
+    {"question": "What are the scheme deadline alerts?", "answer": "SATYA shows deadline alerts for schemes with upcoming application deadlines. Alerts show: Last Day, Urgent (less than 7 days), Closing Soon (7-30 days), and Upcoming deadlines.", "category": "schemes", "scheme": ""},
+    {"question": "How to filter schemes by state?", "answer": "On the Schemes page, click the state filter dropdown and select your state. You will see both central (All India) schemes and schemes specific to your selected state.", "category": "schemes", "scheme": ""},
+    {"question": "What schemes are available for women?", "answer": "Many schemes target women: PMAY, Ujjwala, Stand Up India, Sukanya Samriddhi, Beti Bachao Beti Padhao, and state-wise schemes like Gruha Lakshmi, Ladli, Kanya Sumangala, and more.", "category": "general", "scheme": ""},
+    {"question": "What schemes are available for farmers?", "answer": "Farmer schemes include: PM Kisan (₹6000/year), KCC (low-interest credit), Fasal Bima (crop insurance), Soil Health Card, PM KUSUM (solar pumps), and state schemes like Rythu Bharosa.", "category": "general", "scheme": ""},
+    {"question": "What schemes are available for students?", "answer": "Student schemes include: National Scholarships, PMKVY (free skills training), PM Research Fellowship, Bihar Student Credit Card, state scholarships, and free laptop/tablet schemes.", "category": "general", "scheme": ""},
+    {"question": "What schemes are available for senior citizens?", "answer": "Senior citizen schemes: IGNOAPS (old age pension), Atal Pension Yojana, Vayoshri Yojana (free physical aids), Senior Citizen Fixed Deposit schemes, and state pension schemes.", "category": "general", "scheme": ""},
+    {"question": "What schemes are for small business?", "answer": "Small business schemes: Mudra Loan (up to ₹10L), PMEGP, Stand Up India (₹10L-1Cr), Startup India (tax benefits), PM SVANidhi (street vendors), and PM Vishwakarma (artisans).", "category": "general", "scheme": ""},
+
+    # ===============================================================
     # ===== PRADHAN MANTRI AWAS YOJANA (5) =====
-    {"question": "What is Pradhan Mantri Awas Yojana?", "answer": "PMAY provides subsidies to build or buy affordable houses for low-income families.", "category": "housing", "scheme": "Pradhan Mantri Awas Yojana"},
-    {"question": "Who is eligible for PMAY?", "answer": "Families with annual income below ₹6 lakh (EWS) or ₹18 lakh (LIG/MIG) without a pucca house.", "category": "housing", "scheme": "Pradhan Mantri Awas Yojana"},
-    {"question": "How to apply for PMAY?", "answer": "Apply through the official PMAY portal or local municipal/panchayat office with Aadhaar and income proof.", "category": "housing", "scheme": "Pradhan Mantri Awas Yojana"},
-    {"question": "What is the subsidy under PMAY?", "answer": "Interest subsidy of 6.5% for EWS/LIG, 4% for MIG-I, and 3% for MIG-II under CLSS.", "category": "housing", "scheme": "Pradhan Mantri Awas Yojana"},
-    {"question": "What documents are needed for PMAY?", "answer": "Aadhaar Card, Income Certificate, address proof, bank details, and proof of no pucca house ownership.", "category": "housing", "scheme": "Pradhan Mantri Awas Yojana"},
+    # ===============================================================
+    {"question": "What is Pradhan Mantri Awas Yojana?", "answer": "PMAY provides subsidies to build or buy affordable houses for low-income families. It covers both urban (PMAY-U) and rural (PMAY-G) areas across India.", "category": "housing", "scheme": "Pradhan Mantri Awas Yojana"},
+    {"question": "Who is eligible for PMAY?", "answer": "Families with annual income below ₹6 lakh (EWS) or ₹18 lakh (LIG/MIG) without a pucca house anywhere in India.", "category": "housing", "scheme": "Pradhan Mantri Awas Yojana"},
+    {"question": "How to apply for PMAY?", "answer": "Apply through the official PMAY portal pmaymis.gov.in or visit your local municipal/panchayat office with Aadhaar and income proof.", "category": "housing", "scheme": "Pradhan Mantri Awas Yojana"},
+    {"question": "What is the subsidy under PMAY?", "answer": "Interest subsidy of 6.5% for EWS/LIG, 4% for MIG-I, and 3% for MIG-II under the Credit Linked Subsidy Scheme (CLSS).", "category": "housing", "scheme": "Pradhan Mantri Awas Yojana"},
+    {"question": "What documents are needed for PMAY?", "answer": "Aadhaar Card, Income Certificate, address proof, bank account details, and proof that you do not own a pucca house anywhere in India.", "category": "housing", "scheme": "Pradhan Mantri Awas Yojana"},
 
+    # ===============================================================
     # ===== AYUSHMAN BHARAT (5) =====
-    {"question": "What is Ayushman Bharat?", "answer": "Provides healthcare insurance of ₹5 lakh per family per year for hospitalization.", "category": "health", "scheme": "Ayushman Bharat"},
-    {"question": "How to get Ayushman Card?", "answer": "Check eligibility on PM-JAY website and visit a CSC to get your golden card printed.", "category": "health", "scheme": "Ayushman Bharat"},
-    {"question": "Who is eligible for Ayushman Bharat?", "answer": "Families listed in SECC 2011 database and workers in specific occupational categories.", "category": "health", "scheme": "Ayushman Bharat"},
-    {"question": "Which hospitals accept Ayushman Bharat?", "answer": "All government hospitals and empanelled private hospitals across India.", "category": "health", "scheme": "Ayushman Bharat"},
-    {"question": "What diseases are covered under Ayushman Bharat?", "answer": "Over 1,500 medical procedures including surgeries, treatments, and diagnostics.", "category": "health", "scheme": "Ayushman Bharat"},
+    # ===============================================================
+    {"question": "What is Ayushman Bharat?", "answer": "Ayushman Bharat PM-JAY provides healthcare insurance of ₹5 lakh per family per year for hospitalization. It covers over 1,500 medical procedures across India.", "category": "health", "scheme": "Ayushman Bharat"},
+    {"question": "How to get Ayushman Card?", "answer": "Check eligibility on the PM-JAY website mera.pmjay.gov.in. If eligible, visit a CSC (Common Service Centre) to get your Ayushman Golden Card printed.", "category": "health", "scheme": "Ayushman Bharat"},
+    {"question": "Who is eligible for Ayushman Bharat?", "answer": "Families listed in the SECC 2011 database and workers in specific occupational categories like construction workers, domestic workers, etc.", "category": "health", "scheme": "Ayushman Bharat"},
+    {"question": "Which hospitals accept Ayushman Bharat?", "answer": "All government hospitals and empanelled private hospitals accept Ayushman Bharat. You can find the nearest empanelled hospital on the PM-JAY website.", "category": "health", "scheme": "Ayushman Bharat"},
+    {"question": "What diseases are covered under Ayushman Bharat?", "answer": "Over 1,500 medical procedures including heart surgeries, knee replacement, cancer treatment, dialysis, and diagnostics are covered under Ayushman Bharat.", "category": "health", "scheme": "Ayushman Bharat"},
 
+    # ===============================================================
     # ===== PM KISAN (5) =====
-    {"question": "What is PM Kisan?", "answer": "PM-Kisan provides ₹6,000 per year in 3 installments to small and marginal farmers.", "category": "agriculture", "scheme": "Pradhan Mantri Kisan Samman Nidhi"},
-    {"question": "Who is eligible for PM Kisan?", "answer": "Small and marginal farmers with landholdings up to 2 hectares.", "category": "agriculture", "scheme": "Pradhan Mantri Kisan Samman Nidhi"},
-    {"question": "How to apply for PM Kisan?", "answer": "Apply through the official PM-Kisan portal or local CSC.", "category": "agriculture", "scheme": "Pradhan Mantri Kisan Samman Nidhi"},
-    {"question": "How to check PM Kisan payment status?", "answer": "Use the 'Know Your Status' link on the PM-Kisan portal with your registration number.", "category": "agriculture", "scheme": "Pradhan Mantri Kisan Samman Nidhi"},
-    {"question": "What documents are needed for PM Kisan?", "answer": "Aadhaar Card, land ownership records, and bank account details.", "category": "agriculture", "scheme": "Pradhan Mantri Kisan Samman Nidhi"},
+    # ===============================================================
+    {"question": "What is PM Kisan?", "answer": "PM-Kisan provides ₹6,000 per year in three installments of ₹2,000 each directly to the bank accounts of small and marginal farmers across India.", "category": "agriculture", "scheme": "Pradhan Mantri Kisan Samman Nidhi"},
+    {"question": "Who is eligible for PM Kisan?", "answer": "All farmers with cultivable landholdings are eligible, except institutional landholders, constitutional post holders, and income tax payers.", "category": "agriculture", "scheme": "Pradhan Mantri Kisan Samman Nidhi"},
+    {"question": "How to apply for PM Kisan?", "answer": "Register on the official PM-Kisan portal pmkisan.gov.in or visit your nearest CSC (Common Service Centre) with Aadhaar and land documents.", "category": "agriculture", "scheme": "Pradhan Mantri Kisan Samman Nidhi"},
+    {"question": "How to check PM Kisan payment status?", "answer": "Visit pmkisan.gov.in, click on 'Know Your Status', enter your registration number or Aadhaar number to check your payment and installment status.", "category": "agriculture", "scheme": "Pradhan Mantri Kisan Samman Nidhi"},
+    {"question": "What documents are needed for PM Kisan?", "answer": "Aadhaar Card, land ownership records (khatauni), and bank account details linked to Aadhaar.", "category": "agriculture", "scheme": "Pradhan Mantri Kisan Samman Nidhi"},
 
+    # ===============================================================
     # ===== MUDRA YOJANA (5) =====
-    {"question": "What is Mudra Loan?", "answer": "Provides loans up to ₹10 lakh for micro enterprises in three categories: Shishu, Kishor, and Tarun.", "category": "business", "scheme": "Pradhan Mantri Mudra Yojana"},
-    {"question": "Who is eligible for Mudra Loan?", "answer": "Any Indian citizen with a business plan for non-corporate, non-farm income-generating activity.", "category": "business", "scheme": "Pradhan Mantri Mudra Yojana"},
-    {"question": "What are the three levels of Mudra Loan?", "answer": "Shishu (up to ₹50,000), Kishor (₹50,000 to ₹5 lakh), and Tarun (₹5 lakh to ₹10 lakh).", "category": "business", "scheme": "Pradhan Mantri Mudra Yojana"},
-    {"question": "How to apply for Mudra Loan?", "answer": "Apply at any commercial bank, RRB, small finance bank, or NBFC with your business proposal.", "category": "business", "scheme": "Pradhan Mantri Mudra Yojana"},
-    {"question": "Is collateral needed for Mudra Loan?", "answer": "No, Mudra Loans do not require any collateral or guarantee.", "category": "business", "scheme": "Pradhan Mantri Mudra Yojana"},
+    # ===============================================================
+    {"question": "What is Mudra Loan?", "answer": "Pradhan Mantri Mudra Yojana provides collateral-free loans up to ₹10 lakh for micro enterprises in three categories: Shishu (up to ₹50K), Kishor (₹50K-5L), and Tarun (₹5L-10L).", "category": "business", "scheme": "Pradhan Mantri Mudra Yojana"},
+    {"question": "Who is eligible for Mudra Loan?", "answer": "Any Indian citizen with a business plan for non-corporate, non-farm income-generating activity can apply. No collateral or guarantee required.", "category": "business", "scheme": "Pradhan Mantri Mudra Yojana"},
+    {"question": "What are the three levels of Mudra Loan?", "answer": "Shishu (up to ₹50,000) for starting businesses, Kishor (₹50,000 to ₹5 lakh) for growing businesses, and Tarun (₹5 lakh to ₹10 lakh) for well-established enterprises.", "category": "business", "scheme": "Pradhan Mantri Mudra Yojana"},
+    {"question": "How to apply for Mudra Loan?", "answer": "Apply at any commercial bank, Regional Rural Bank (RRB), small finance bank, or NBFC with your business proposal and identity proof.", "category": "business", "scheme": "Pradhan Mantri Mudra Yojana"},
+    {"question": "Is collateral needed for Mudra Loan?", "answer": "No. Mudra Loans do not require any collateral, guarantee, or security. The loan is provided based on your business plan.", "category": "business", "scheme": "Pradhan Mantri Mudra Yojana"},
 
+    # ===============================================================
     # ===== SUKANYA SAMRIDDHI (5) =====
-    {"question": "What is Sukanya Samriddhi Yojana?", "answer": "A savings scheme for the girl child with high interest for education and marriage.", "category": "social", "scheme": "Sukanya Samriddhi Yojana"},
-    {"question": "Who can open a Sukanya Samriddhi account?", "answer": "Parents or guardians of a girl child below 10 years of age.", "category": "social", "scheme": "Sukanya Samriddhi Yojana"},
-    {"question": "What is the interest rate for Sukanya Samriddhi?", "answer": "Currently around 8.2% per annum, set by the government quarterly.", "category": "social", "scheme": "Sukanya Samriddhi Yojana"},
-    {"question": "What is the minimum deposit for Sukanya Samriddhi?", "answer": "Minimum ₹250 per year and maximum ₹1.5 lakh per year.", "category": "social", "scheme": "Sukanya Samriddhi Yojana"},
-    {"question": "When can money be withdrawn from Sukanya Samriddhi?", "answer": "Partial withdrawal (50%) at age 18. Full maturity at age 21.", "category": "social", "scheme": "Sukanya Samriddhi Yojana"},
+    # ===============================================================
+    {"question": "What is Sukanya Samriddhi Yojana?", "answer": "A government savings scheme for the girl child offering one of the highest interest rates (around 8.2%) for education and marriage expenses.", "category": "social", "scheme": "Sukanya Samriddhi Yojana"},
+    {"question": "Who can open a Sukanya Samriddhi account?", "answer": "Parents or legal guardians can open an account for a girl child below 10 years of age. Maximum 2 accounts per family (one per girl child).", "category": "social", "scheme": "Sukanya Samriddhi Yojana"},
+    {"question": "What is the interest rate for Sukanya Samriddhi?", "answer": "Currently around 8.2% per annum, revised quarterly by the government. This is one of the highest interest rates among small savings schemes.", "category": "social", "scheme": "Sukanya Samriddhi Yojana"},
+    {"question": "What is the minimum deposit for Sukanya Samriddhi?", "answer": "Minimum deposit is ₹250 per year and maximum is ₹1.5 lakh per year. Deposits can be made for 15 years from the account opening date.", "category": "social", "scheme": "Sukanya Samriddhi Yojana"},
+    {"question": "When can money be withdrawn from Sukanya Samriddhi?", "answer": "Partial withdrawal of 50% is allowed at age 18 for higher education. Full maturity amount available at age 21 or at marriage after age 18.", "category": "social", "scheme": "Sukanya Samriddhi Yojana"},
 
+    # ===============================================================
     # ===== STAND UP INDIA (4) =====
-    {"question": "What is Stand Up India?", "answer": "Bank loans between ₹10 lakh and ₹1 crore for SC/ST and women entrepreneurs.", "category": "business", "scheme": "Stand Up India Scheme"},
-    {"question": "Who is eligible for Stand Up India?", "answer": "SC/ST and/or women entrepreneurs above 18 years for greenfield enterprises.", "category": "business", "scheme": "Stand Up India Scheme"},
-    {"question": "How to apply for Stand Up India?", "answer": "Apply online through Stand Up Mitra portal or visit your nearest bank.", "category": "business", "scheme": "Stand Up India Scheme"},
-    {"question": "What businesses are covered under Stand Up India?", "answer": "Manufacturing, services, or trading sector enterprises in the greenfield category.", "category": "business", "scheme": "Stand Up India Scheme"},
+    # ===============================================================
+    {"question": "What is Stand Up India?", "answer": "Stand Up India provides bank loans between ₹10 lakh and ₹1 crore to SC/ST and women entrepreneurs for setting up greenfield enterprises.", "category": "business", "scheme": "Stand Up India Scheme"},
+    {"question": "Who is eligible for Stand Up India?", "answer": "SC/ST and/or women entrepreneurs above 18 years starting a new manufacturing, trading, or services enterprise (greenfield only).", "category": "business", "scheme": "Stand Up India Scheme"},
+    {"question": "How to apply for Stand Up India?", "answer": "Apply online through the Stand Up India portal standupmitra.in or visit your nearest bank branch.", "category": "business", "scheme": "Stand Up India Scheme"},
+    {"question": "What businesses are covered under Stand Up India?", "answer": "Manufacturing, services, or trading sector enterprises in the greenfield (new) category. The borrower must have 51% shareholding.", "category": "business", "scheme": "Stand Up India Scheme"},
 
-    # ===== ATAL PENSION YOJANA (4) =====
-    {"question": "What is Atal Pension Yojana?", "answer": "Pension scheme providing ₹1,000 to ₹5,000 monthly pension after age 60.", "category": "social", "scheme": "Atal Pension Yojana"},
-    {"question": "Who is eligible for Atal Pension Yojana?", "answer": "Indian citizens aged 18-40 with a savings bank account.", "category": "social", "scheme": "Atal Pension Yojana"},
-    {"question": "How to apply for Atal Pension Yojana?", "answer": "Fill the registration form at your savings bank branch or via net banking.", "category": "social", "scheme": "Atal Pension Yojana"},
-    {"question": "What is the monthly contribution for Atal Pension?", "answer": "As low as ₹42/month (age 18) to ₹291/month (age 35) for ₹1,000 monthly pension.", "category": "social", "scheme": "Atal Pension Yojana"},
+    # ===============================================================
+    # ===== ATAL PENSION / JAN DHAN / INSURANCE SCHEMES (14) =====
+    # ===============================================================
+    {"question": "What is Atal Pension Yojana?", "answer": "APY provides guaranteed monthly pension of ₹1,000 to ₹5,000 after age 60. Government co-contributes 50% for eligible subscribers.", "category": "social", "scheme": "Atal Pension Yojana"},
+    {"question": "Who is eligible for Atal Pension Yojana?", "answer": "Indian citizens aged 18-40 with a savings bank account. Not applicable to income tax payers or government employees.", "category": "social", "scheme": "Atal Pension Yojana"},
+    {"question": "How to apply for Atal Pension Yojana?", "answer": "Fill the registration form at your savings bank branch, via net banking, or through the ENPS portal.", "category": "social", "scheme": "Atal Pension Yojana"},
+    {"question": "What is the monthly contribution for Atal Pension?", "answer": "As low as ₹42/month (joining at age 18) to ₹291/month (joining at age 35) for ₹1,000 monthly pension. Higher pension amounts require proportionally higher contributions.", "category": "social", "scheme": "Atal Pension Yojana"},
+    {"question": "What is PM Jan Dhan Yojana?", "answer": "PMJDY provides universal banking access with zero-balance accounts, free RuPay debit card, and built-in insurance coverage.", "category": "business", "scheme": "Pradhan Mantri Jan Dhan Yojana"},
+    {"question": "What benefits come with Jan Dhan account?", "answer": "Free RuPay debit card, ₹2 lakh accidental death insurance, ₹30,000 life cover, overdraft facility up to ₹10,000, and zero minimum balance.", "category": "business", "scheme": "Pradhan Mantri Jan Dhan Yojana"},
+    {"question": "How to open a Jan Dhan account?", "answer": "Visit any bank branch or Business Correspondent outlet with Aadhaar or any valid ID proof. No minimum balance required.", "category": "business", "scheme": "Pradhan Mantri Jan Dhan Yojana"},
+    {"question": "Who is eligible for Jan Dhan Yojana?", "answer": "Any Indian citizen above 10 years without an existing bank account can open a Jan Dhan account.", "category": "business", "scheme": "Pradhan Mantri Jan Dhan Yojana"},
+    {"question": "What is PM Jeevan Jyoti Bima Yojana?", "answer": "PMJJBY provides life insurance of ₹2 lakh at a premium of just ₹436 per year, auto-debited from your bank account.", "category": "social", "scheme": "Pradhan Mantri Jeevan Jyoti Bima Yojana"},
+    {"question": "Who can enroll in PMJJBY?", "answer": "Any person aged 18-50 years with a savings bank account. The cover continues till age 55 on annual renewal.", "category": "social", "scheme": "Pradhan Mantri Jeevan Jyoti Bima Yojana"},
+    {"question": "How to claim PMJJBY insurance?", "answer": "The nominee submits a claim form along with the death certificate and bank account details to the bank where the policy was secured.", "category": "social", "scheme": "Pradhan Mantri Jeevan Jyoti Bima Yojana"},
+    {"question": "What is PM Suraksha Bima Yojana?", "answer": "PMSBY provides accidental death and disability insurance of ₹2 lakh at just ₹20 per year premium.", "category": "social", "scheme": "Pradhan Mantri Suraksha Bima Yojana"},
+    {"question": "Who can enroll in PMSBY?", "answer": "Any person aged 18-70 years with a savings bank account can enroll in PMSBY by giving auto-debit consent.", "category": "social", "scheme": "Pradhan Mantri Suraksha Bima Yojana"},
+    {"question": "What does PMSBY cover?", "answer": "₹2 lakh for accidental death, ₹2 lakh for total permanent disability, and ₹1 lakh for partial permanent disability.", "category": "social", "scheme": "Pradhan Mantri Suraksha Bima Yojana"},
 
-    # ===== JAN DHAN (4) =====
-    {"question": "What is PM Jan Dhan Yojana?", "answer": "Provides universal banking access with zero-balance accounts, credit, and insurance.", "category": "business", "scheme": "Pradhan Mantri Jan Dhan Yojana"},
-    {"question": "What benefits come with Jan Dhan account?", "answer": "Free RuPay card, ₹2 lakh accident insurance, ₹30,000 life cover, overdraft facility.", "category": "business", "scheme": "Pradhan Mantri Jan Dhan Yojana"},
-    {"question": "How to open a Jan Dhan account?", "answer": "Visit any bank branch or Business Correspondent outlet with Aadhaar/ID proof.", "category": "business", "scheme": "Pradhan Mantri Jan Dhan Yojana"},
-    {"question": "Who is eligible for Jan Dhan Yojana?", "answer": "Any Indian citizen above 10 years without a bank account.", "category": "business", "scheme": "Pradhan Mantri Jan Dhan Yojana"},
-
-    # ===== JEEVAN JYOTI / SURAKSHA BIMA (6) =====
-    {"question": "What is PM Jeevan Jyoti Bima Yojana?", "answer": "Life insurance of ₹2 lakh for premium of ₹436 per year.", "category": "social", "scheme": "Pradhan Mantri Jeevan Jyoti Bima Yojana"},
-    {"question": "Who can enroll in PMJJBY?", "answer": "Any person aged 18-50 with a savings bank account.", "category": "social", "scheme": "Pradhan Mantri Jeevan Jyoti Bima Yojana"},
-    {"question": "How to claim PMJJBY insurance?", "answer": "Nominee submits claim form with death certificate to the bank.", "category": "social", "scheme": "Pradhan Mantri Jeevan Jyoti Bima Yojana"},
-    {"question": "What is PM Suraksha Bima Yojana?", "answer": "Accidental death and disability insurance of ₹2 lakh for ₹20 per year.", "category": "social", "scheme": "Pradhan Mantri Suraksha Bima Yojana"},
-    {"question": "Who can enroll in PMSBY?", "answer": "Any person aged 18-70 with a savings bank account.", "category": "social", "scheme": "Pradhan Mantri Suraksha Bima Yojana"},
-    {"question": "What does PMSBY cover?", "answer": "₹2 lakh for accidental death, ₹2 lakh for total disability, ₹1 lakh for partial.", "category": "social", "scheme": "Pradhan Mantri Suraksha Bima Yojana"},
-
+    # ===============================================================
     # ===== PM UJJWALA (4) =====
-    {"question": "What is PM Ujjwala Yojana?", "answer": "Free LPG connections to women from BPL households.", "category": "housing", "scheme": "PM Ujjwala Yojana"},
-    {"question": "Who is eligible for Ujjwala Yojana?", "answer": "Women from BPL families above 18 years without existing LPG connection.", "category": "housing", "scheme": "PM Ujjwala Yojana"},
-    {"question": "How to apply for Ujjwala Yojana?", "answer": "Visit nearest LPG distributor with Aadhaar, BPL card, and photo.", "category": "housing", "scheme": "PM Ujjwala Yojana"},
-    {"question": "What benefits does Ujjwala provide?", "answer": "Free LPG connection, one free refill, stove at subsidized rates.", "category": "housing", "scheme": "PM Ujjwala Yojana"},
+    # ===============================================================
+    {"question": "What is PM Ujjwala Yojana?", "answer": "PM Ujjwala Yojana provides free LPG connections to women from BPL households, replacing polluting cooking fuels with clean LPG gas.", "category": "housing", "scheme": "PM Ujjwala Yojana"},
+    {"question": "Who is eligible for Ujjwala Yojana?", "answer": "Women from BPL families above 18 years of age who don't have an existing LPG connection in their household.", "category": "housing", "scheme": "PM Ujjwala Yojana"},
+    {"question": "How to apply for Ujjwala Yojana?", "answer": "Visit your nearest LPG distributor (HP, Bharat Gas, or Indane) with Aadhaar, BPL card, and a passport-size photo.", "category": "housing", "scheme": "PM Ujjwala Yojana"},
+    {"question": "What benefits does Ujjwala provide?", "answer": "Free LPG connection with deposit-free cylinder, one free refill, stove at subsidized rates, and interest-free EMI option for buying a stove.", "category": "housing", "scheme": "PM Ujjwala Yojana"},
 
-    # ===== PM GARIB KALYAN ANNA (3) =====
-    {"question": "What is PM Garib Kalyan Anna Yojana?", "answer": "Free food grains (5 kg/person/month) to nearly 80 crore beneficiaries.", "category": "social", "scheme": "PM Garib Kalyan Anna Yojana"},
-    {"question": "Who is eligible for PM Garib Kalyan Anna?", "answer": "Families covered under NFSA with Antyodaya or Priority household status.", "category": "social", "scheme": "PM Garib Kalyan Anna Yojana"},
-    {"question": "How to avail PM Garib Kalyan Anna?", "answer": "Collect free rations from nearest Fair Price Shop using your ration card.", "category": "social", "scheme": "PM Garib Kalyan Anna Yojana"},
-
-    # ===== SKILL INDIA / PMKVY (6) =====
-    {"question": "What is Skill India?", "answer": "A mission providing vocational training and certification to Indian youth.", "category": "education", "scheme": "Skill India Mission"},
-    {"question": "How to register for Skill India training?", "answer": "Register on Skill India portal or visit nearest PMKVY training center.", "category": "education", "scheme": "Skill India Mission"},
-    {"question": "Is Skill India training free?", "answer": "Yes, training under PMKVY is completely free with certification and placement assistance.", "category": "education", "scheme": "Skill India Mission"},
-    {"question": "What courses are available under Skill India?", "answer": "300+ courses in IT, retail, healthcare, construction, beauty, and more.", "category": "education", "scheme": "Skill India Mission"},
-    {"question": "What is PM Kaushal Vikas Yojana?", "answer": "Flagship skill training scheme with free industry-relevant training and certification.", "category": "education", "scheme": "PM Kaushal Vikas Yojana"},
-    {"question": "How to register for PMKVY?", "answer": "Register on PMKVY portal or visit a training center. Training is completely free.", "category": "education", "scheme": "PM Kaushal Vikas Yojana"},
-
-    # ===== STARTUP INDIA / DIGITAL INDIA (5) =====
-    {"question": "What is Startup India?", "answer": "Initiative to nurture startups with tax benefits, funding, and simplified compliance.", "category": "business", "scheme": "Startup India"},
-    {"question": "How to register under Startup India?", "answer": "Register on Startup India portal with incorporation certificate and innovation description.", "category": "business", "scheme": "Startup India"},
-    {"question": "What benefits does Startup India provide?", "answer": "3-year tax holiday, self-certification compliance, fast-track patents, and funding.", "category": "business", "scheme": "Startup India"},
-    {"question": "What is Digital India?", "answer": "Campaign to make government services available electronically via improved infrastructure.", "category": "general", "scheme": "Digital India Programme"},
-    {"question": "What services does Digital India offer?", "answer": "DigiLocker, UMANG app, e-Hospital, e-Sign, and digital governance services.", "category": "general", "scheme": "Digital India Programme"},
-
+    # ===============================================================
     # ===== CROP INSURANCE & AGRICULTURE (8) =====
-    {"question": "What is PM Fasal Bima Yojana?", "answer": "Crop insurance protecting farmers against loss from natural calamities.", "category": "agriculture", "scheme": "PM Fasal Bima Yojana"},
-    {"question": "How to apply for PM Fasal Bima?", "answer": "Register via bank or PMFBY portal with crop and land details before season deadline.", "category": "agriculture", "scheme": "PM Fasal Bima Yojana"},
-    {"question": "What is the premium under PM Fasal Bima?", "answer": "2% for Kharif, 1.5% for Rabi, and 5% for commercial/horticultural crops.", "category": "agriculture", "scheme": "PM Fasal Bima Yojana"},
-    {"question": "Which crops are covered under PM Fasal Bima?", "answer": "Major food crops, oilseeds, and annual commercial/horticultural crops.", "category": "agriculture", "scheme": "PM Fasal Bima Yojana"},
-    {"question": "What is Kisan Credit Card?", "answer": "KCC provides farmers with timely credit for cultivation at low interest.", "category": "agriculture", "scheme": "Kisan Credit Card Scheme"},
-    {"question": "How to apply for KCC?", "answer": "Apply at any commercial bank, RRB, or cooperative bank with land documents.", "category": "agriculture", "scheme": "Kisan Credit Card Scheme"},
-    {"question": "What is the interest rate on KCC?", "answer": "4% interest (with 3% subvention) for loans up to ₹3 lakh on timely repayment.", "category": "agriculture", "scheme": "Kisan Credit Card Scheme"},
-    {"question": "What is Soil Health Card?", "answer": "Provides soil nutrient status and crop-wise fertilizer recommendations.", "category": "agriculture", "scheme": "Soil Health Card Scheme"},
+    # ===============================================================
+    {"question": "What is PM Fasal Bima Yojana?", "answer": "PMFBY provides crop insurance protecting farmers against loss from natural calamities, pests, and diseases at very low premiums.", "category": "agriculture", "scheme": "PM Fasal Bima Yojana"},
+    {"question": "How to apply for PM Fasal Bima?", "answer": "Register via your bank or on the PMFBY portal pmfby.gov.in with crop and land details before the season deadline.", "category": "agriculture", "scheme": "PM Fasal Bima Yojana"},
+    {"question": "What is the premium under PM Fasal Bima?", "answer": "Farmer's premium: 2% for Kharif crops, 1.5% for Rabi crops, and 5% for commercial/horticultural crops. Rest is borne by the government.", "category": "agriculture", "scheme": "PM Fasal Bima Yojana"},
+    {"question": "Which crops are covered under PM Fasal Bima?", "answer": "Major food crops (rice, wheat, pulses), oilseeds, annual commercial crops, and horticultural crops are covered under PMFBY.", "category": "agriculture", "scheme": "PM Fasal Bima Yojana"},
+    {"question": "What is Kisan Credit Card?", "answer": "KCC provides farmers with timely credit for cultivation, post-harvest expenses, and personal needs at subsidized interest rates.", "category": "agriculture", "scheme": "Kisan Credit Card Scheme"},
+    {"question": "How to apply for KCC?", "answer": "Apply at any commercial bank, Regional Rural Bank, or cooperative bank with land documents, identity proof, and passport-size photo.", "category": "agriculture", "scheme": "Kisan Credit Card Scheme"},
+    {"question": "What is the interest rate on KCC?", "answer": "4% effective interest rate (7% with 3% subvention) for loans up to ₹3 lakh on timely repayment. This is one of the cheapest credit sources for farmers.", "category": "agriculture", "scheme": "Kisan Credit Card Scheme"},
+    {"question": "What is Soil Health Card?", "answer": "Soil Health Card provides soil nutrient status reports and crop-wise fertilizer recommendations to help farmers optimize their input costs.", "category": "agriculture", "scheme": "Soil Health Card Scheme"},
 
-    # ===== HOUSING & INFRASTRUCTURE (6) =====
-    {"question": "What is Swachh Bharat Mission?", "answer": "Aims to achieve universal sanitation and eliminate open defecation.", "category": "housing", "scheme": "Swachh Bharat Mission"},
-    {"question": "How to get toilet construction subsidy?", "answer": "Apply through local SBM office. ₹12,000 subsidy per toilet under SBM-Gramin.", "category": "housing", "scheme": "Swachh Bharat Mission"},
-    {"question": "What is PM SVANidhi?", "answer": "Micro-credit scheme providing affordable loans up to ₹50,000 to street vendors.", "category": "business", "scheme": "PM SVANidhi Scheme"},
-    {"question": "How to apply for PM SVANidhi?", "answer": "Apply online at pmsvanidhi.mohua.gov.in or through local urban bodies.", "category": "business", "scheme": "PM SVANidhi Scheme"},
-    {"question": "What is PM Vishwakarma?", "answer": "Supports artisans with training, credit up to ₹3 lakh, and digital identity.", "category": "business", "scheme": "PM Vishwakarma Scheme"},
-    {"question": "What is Jal Jeevan Mission?", "answer": "Provides functional tap water connections to every rural household.", "category": "housing", "scheme": ""},
+    # ===============================================================
+    # ===== SKILL INDIA / EDUCATION (11) =====
+    # ===============================================================
+    {"question": "What is Skill India?", "answer": "Skill India Mission provides industry-relevant vocational training and certification to Indian youth for better employment opportunities.", "category": "education", "scheme": "Skill India Mission"},
+    {"question": "How to register for Skill India training?", "answer": "Register on the Skill India portal skillindia.nsdcindia.org or visit your nearest PMKVY training center.", "category": "education", "scheme": "Skill India Mission"},
+    {"question": "Is Skill India training free?", "answer": "Yes, training under PMKVY (Pradhan Mantri Kaushal Vikas Yojana) is completely free with certification, assessment, and placement assistance.", "category": "education", "scheme": "Skill India Mission"},
+    {"question": "What courses are available under Skill India?", "answer": "300+ courses in IT, retail, healthcare, construction, beauty, automotive, electronics, plumbing, electrician, and many more sectors.", "category": "education", "scheme": "Skill India Mission"},
+    {"question": "What are National Scholarship Schemes?", "answer": "Various government scholarships for students from class 1 to Ph.D. based on merit, income, and category. Apply at scholarships.gov.in.", "category": "education", "scheme": "National Scholarship Schemes"},
+    {"question": "How to apply for National Scholarships?", "answer": "Register and apply on the National Scholarships Portal (NSP) at scholarships.gov.in. New applications open annually.", "category": "education", "scheme": "National Scholarship Schemes"},
+    {"question": "Are there scholarships for girl students?", "answer": "Yes! Pragati Scholarship, AICTE scholarships, and many state-specific scholarships give priority to female students.", "category": "education", "scheme": "National Scholarship Schemes"},
+    {"question": "What is PM Poshan Scheme?", "answer": "PM POSHAN provides free hot cooked meals to students in government and government-aided schools to improve nutrition and school attendance.", "category": "education", "scheme": "PM Poshan Scheme"},
+    {"question": "What is Beti Bachao Beti Padhao?", "answer": "A national campaign to improve the child sex ratio, promote girl child education, and ensure girls have access to welfare services.", "category": "social", "scheme": "Beti Bachao Beti Padhao"},
+    {"question": "What is PM Kaushal Vikas Yojana?", "answer": "PMKVY is the flagship skill training scheme that provides free industry-relevant training, certification, and job placement assistance to youth.", "category": "education", "scheme": "PM Kaushal Vikas Yojana"},
+    {"question": "How to register for PMKVY?", "answer": "Register on the PMKVY portal pmkvyofficial.org or visit any nearby PMKVY training center. Training is completely free.", "category": "education", "scheme": "PM Kaushal Vikas Yojana"},
 
-    # ===== HEALTH & NUTRITION (5) =====
-    {"question": "What is Health ID / ABHA?", "answer": "A unique health ID to store and share health records digitally across India.", "category": "health", "scheme": "National Digital Health Mission"},
-    {"question": "How to create an ABHA Health ID?", "answer": "Create on the ABHA portal or ABHA app using Aadhaar.", "category": "health", "scheme": "National Digital Health Mission"},
-    {"question": "What is the National Health Mission?", "answer": "Provides universal access to affordable and quality healthcare.", "category": "health", "scheme": "National Health Mission"},
-    {"question": "What is PM Matru Vandana Yojana?", "answer": "₹5,000 in 3 installments to pregnant and lactating mothers.", "category": "health", "scheme": ""},
-    {"question": "What is PM Poshan Scheme?", "answer": "Free hot cooked meals to students in government schools.", "category": "education", "scheme": "PM Poshan Scheme"},
+    # ===============================================================
+    # ===== SOCIAL WELFARE / PENSION (10) =====
+    # ===============================================================
+    {"question": "What is the Disability Pension?", "answer": "Monthly financial aid of ₹300+ for individuals with 80% or more disability under the National Social Assistance Programme (NSAP).", "category": "social", "scheme": ""},
+    {"question": "What are benefits for senior citizens?", "answer": "IGNOAPS pension, Atal Pension Yojana, Vayoshri Yojana (free physical aids), SCSS savings scheme, and free/subsidized healthcare.", "category": "social", "scheme": "Indira Gandhi National Old Age Pension Scheme"},
+    {"question": "How to apply for Old Age Pension?", "answer": "Apply via your local block/taluka office with age proof, BPL certificate, Aadhaar card, and bank account details.", "category": "social", "scheme": "Indira Gandhi National Old Age Pension Scheme"},
+    {"question": "What is PM Shram Yogi Maandhan?", "answer": "Pension scheme for unorganized sector workers (street vendors, domestic workers, etc.) providing ₹3,000/month after age 60.", "category": "social", "scheme": "PM Shram Yogi Maandhan"},
+    {"question": "What is PM Garib Kalyan Anna Yojana?", "answer": "Free food grains (5 kg per person per month — rice or wheat) to nearly 80 crore beneficiaries under NFSA.", "category": "social", "scheme": "PM Garib Kalyan Anna Yojana"},
+    {"question": "Who is eligible for PM Garib Kalyan Anna?", "answer": "All families covered under NFSA with Antyodaya Anna Yojana (AAY) or Priority Household (PHH) ration cards.", "category": "social", "scheme": "PM Garib Kalyan Anna Yojana"},
+    {"question": "How to avail PM Garib Kalyan Anna?", "answer": "Collect your free rations from the nearest Fair Price Shop (ration shop) using your ration card. No additional registration needed.", "category": "social", "scheme": "PM Garib Kalyan Anna Yojana"},
+    {"question": "What is MGNREGA?", "answer": "MGNREGA guarantees 100 days of wage employment per year to every rural household. Wages are ₹200-300+ per day depending on the state.", "category": "social", "scheme": ""},
+    {"question": "What is Direct Benefit Transfer?", "answer": "DBT transfers government subsidies and benefits directly to your Aadhaar-linked bank account, eliminating middlemen and reducing corruption.", "category": "general", "scheme": ""},
+    {"question": "How to link Aadhaar with bank account?", "answer": "Visit your bank branch with your Aadhaar card, or use your bank's mobile app/net banking to link Aadhaar for Direct Benefit Transfer.", "category": "general", "scheme": ""},
 
-    # ===== EDUCATION & SCHOLARSHIPS (6) =====
-    {"question": "What are National Scholarship Schemes?", "answer": "Various scholarships for students from class 1 to Ph.D.", "category": "education", "scheme": "National Scholarship Schemes"},
-    {"question": "How to apply for National Scholarships?", "answer": "Register and apply on NSP at scholarships.gov.in.", "category": "education", "scheme": "National Scholarship Schemes"},
-    {"question": "Are there scholarships for girl students?", "answer": "Yes, Pragati Scholarship and AICTE give priority to girls.", "category": "education", "scheme": "National Scholarship Schemes"},
-    {"question": "What is PM eVidya?", "answer": "Comprehensive initiative unifying digital and online education.", "category": "education", "scheme": "PM eVidya Programme"},
-    {"question": "What is National Career Service?", "answer": "Digital platform connecting job seekers with employers.", "category": "education", "scheme": "National Career Service Scheme"},
-    {"question": "What is Beti Bachao Beti Padhao?", "answer": "Campaign to improve awareness and welfare services for girls.", "category": "social", "scheme": "Beti Bachao Beti Padhao"},
+    # ===============================================================
+    # ===== STATE SCHEMES — KEY STATES (35) =====
+    # ===============================================================
+    # Maharashtra
+    {"question": "What is Majhi Kanya Bhagyashree?", "answer": "Maharashtra scheme providing ₹50,000 insurance and financial support for girl children in families with annual income below ₹7.5 lakh.", "category": "social", "scheme": "Majhi Kanya Bhagyashree"},
+    {"question": "What is Mahatma Phule Jan Arogya Yojana?", "answer": "Maharashtra's health insurance covering 971 surgeries for families with yellow/orange ration cards. Free cashless treatment at empanelled hospitals.", "category": "health", "scheme": "Mahatma Phule Jan Arogya Yojana"},
+    # Karnataka
+    {"question": "What is Karnataka Gruha Lakshmi?", "answer": "₹2,000 per month to women heads of households in Karnataka who are BPL or low-income families.", "category": "social", "scheme": "Karnataka Gruha Lakshmi Scheme"},
+    {"question": "What is Karnataka Yuva Nidhi?", "answer": "₹3,000/month (graduates) or ₹1,500/month (diploma holders) unemployment allowance for youth under 30 years in Karnataka.", "category": "education", "scheme": "Karnataka Yuva Nidhi Scheme"},
+    # Tamil Nadu
+    {"question": "What is Kalaignar Magalir Urimai Thogai?", "answer": "₹1,000 per month to eligible women household heads in Tamil Nadu for economic empowerment.", "category": "social", "scheme": "Tamil Nadu Kalaignar Magalir Urimai Thogai"},
+    {"question": "What is Tamil Nadu Free Laptop Scheme?", "answer": "Free laptops for students studying in government schools and colleges in Tamil Nadu to promote digital literacy.", "category": "education", "scheme": "Tamil Nadu Free Laptop Scheme"},
+    # Uttar Pradesh
+    {"question": "What is UP Kanya Sumangala Yojana?", "answer": "₹15,000 in 6 stages from birth to graduation for girl children in Uttar Pradesh families with income below ₹3 lakh.", "category": "social", "scheme": "UP Kanya Sumangala Yojana"},
+    {"question": "How to apply for Kanya Sumangala?", "answer": "Apply online at mksy.up.gov.in with parents' details, Aadhaar, and girl child's birth certificate.", "category": "social", "scheme": "UP Kanya Sumangala Yojana"},
+    # West Bengal
+    {"question": "What is Kanyashree Prakalpa?", "answer": "₹750 annual scholarship and ₹25,000 one-time grant for unmarried girls aged 13-18 in West Bengal with family income below ₹1.2 lakh.", "category": "education", "scheme": "Kanyashree Prakalpa"},
+    {"question": "What is Lakshmir Bhandar?", "answer": "₹500/month (General) or ₹1,000/month (SC/ST) to women heads of households in West Bengal.", "category": "social", "scheme": "Lakshmir Bhandar"},
+    # Gujarat
+    {"question": "What is Gujarat Vahali Dikri Yojana?", "answer": "₹4,000 at Class 1 enrollment, ₹6,000 at Class 9, and ₹1 lakh at age 18 for girls in Gujarat.", "category": "social", "scheme": "Gujarat Vahali Dikri Yojana"},
+    # Rajasthan
+    {"question": "What is Rajasthan Chiranjeevi Yojana?", "answer": "Universal health insurance providing ₹25 lakh coverage per family per year in Rajasthan at just ₹850 annual premium.", "category": "health", "scheme": "Rajasthan Chiranjeevi Yojana"},
+    # Bihar
+    {"question": "What is Bihar Kanya Utthan Yojana?", "answer": "₹50,000+ from birth to graduation for girls in Bihar to encourage education and reduce child marriage.", "category": "social", "scheme": "Bihar Mukhyamantri Kanya Utthan Yojana"},
+    {"question": "What is Bihar Student Credit Card?", "answer": "Education loan up to ₹4 lakh at 4% interest (1% for women/SC/ST) for Bihar students pursuing higher education.", "category": "education", "scheme": "Bihar Student Credit Card Scheme"},
+    # Other States
+    {"question": "What is Kerala LIFE Mission?", "answer": "₹4 lakh for house construction for homeless and landless families in Kerala.", "category": "housing", "scheme": "Kerala LIFE Mission"},
+    {"question": "What is AP YSR Rythu Bharosa?", "answer": "₹13,500 per year financial assistance to farmers in Andhra Pradesh in addition to PM Kisan.", "category": "agriculture", "scheme": "AP YSR Rythu Bharosa"},
+    {"question": "What is Telangana Rythu Bandhu?", "answer": "₹10,000 per acre per year investment support for Telangana farmers for both Rabi and Kharif seasons.", "category": "agriculture", "scheme": "Telangana Rythu Bandhu Scheme"},
+    {"question": "What is Odisha KALIA Yojana?", "answer": "₹25,000 per season for small farmers and ₹12,500 for landless agricultural households in Odisha.", "category": "agriculture", "scheme": "Odisha KALIA Yojana"},
+    {"question": "What is Assam Orunodoi?", "answer": "₹1,250/month to one woman per family in Assam for household financial empowerment.", "category": "social", "scheme": "Assam Orunodoi Scheme"},
+    {"question": "What is Chhattisgarh Mahtari Vandan?", "answer": "₹1,000/month to all married women in Chhattisgarh for economic empowerment and independence.", "category": "social", "scheme": "Chhattisgarh Mahtari Vandan Yojana"},
 
-    # ===== SOCIAL WELFARE (8) =====
-    {"question": "What is the Disability Pension?", "answer": "Monthly financial aid for individuals with 80%+ disability under NSAP.", "category": "social", "scheme": ""},
-    {"question": "What are benefits for senior citizens?", "answer": "IGNOAPS pension and Vayoshri Yojana provide financial and physical aids.", "category": "social", "scheme": "Indira Gandhi National Old Age Pension Scheme"},
-    {"question": "How to apply for Old Age Pension?", "answer": "Apply via local block office with age proof and BPL certificate.", "category": "social", "scheme": "Indira Gandhi National Old Age Pension Scheme"},
-    {"question": "What is PM Shram Yogi Maandhan?", "answer": "Pension scheme for unorganized workers providing ₹3,000/month after age 60.", "category": "social", "scheme": "PM Shram Yogi Maandhan"},
-    {"question": "What is NRLM?", "answer": "Creates livelihood opportunities for rural poor through self-help groups.", "category": "social", "scheme": "National Rural Livelihood Mission"},
-    {"question": "What is MGNREGA?", "answer": "Guarantees 100 days of wage employment per year to rural households.", "category": "social", "scheme": ""},
-    {"question": "What is PM Matsya Sampada Yojana?", "answer": "Sustainable development of fisheries with 40-60% subsidy.", "category": "agriculture", "scheme": "PM Matsya Sampada Yojana"},
-    {"question": "What is Rashtriya Vayoshri Yojana?", "answer": "Free physical aids like wheelchairs and hearing aids for BPL senior citizens.", "category": "social", "scheme": "Rashtriya Vayoshri Yojana"},
+    # ===============================================================
+    # ===== STARTUP / DIGITAL INDIA / HOUSING (10) =====
+    # ===============================================================
+    {"question": "What is Startup India?", "answer": "Government initiative to nurture startups with 3-year tax holiday, self-certification compliance, fast-track patents, and fund of funds.", "category": "business", "scheme": "Startup India"},
+    {"question": "How to register under Startup India?", "answer": "Register on startupindia.gov.in with your incorporation certificate, PAN, and a brief description of your innovation.", "category": "business", "scheme": "Startup India"},
+    {"question": "What is PM SVANidhi?", "answer": "PM Street Vendor's AtmaNirbhar Nidhi provides micro-credit up to ₹50,000 to street vendors at subsidized interest rates.", "category": "business", "scheme": "PM SVANidhi Scheme"},
+    {"question": "What is PM Vishwakarma?", "answer": "Supports traditional artisans and craftsmen with free skill training, credit up to ₹3 lakh, digital identity, and market access.", "category": "business", "scheme": "PM Vishwakarma Scheme"},
+    {"question": "What is Swachh Bharat Mission?", "answer": "Swachh Bharat aims to achieve universal sanitation and eliminate open defecation. ₹12,000 subsidy per toilet under SBM-Gramin.", "category": "housing", "scheme": "Swachh Bharat Mission"},
+    {"question": "How to get toilet construction subsidy?", "answer": "Apply through your local SBM office or Gram Panchayat. ₹12,000 subsidy is provided per toilet construction under SBM-Gramin.", "category": "housing", "scheme": "Swachh Bharat Mission"},
+    {"question": "What is Digital India?", "answer": "Campaign to make government services available electronically via improved digital infrastructure, literacy, and governance.", "category": "general", "scheme": "Digital India Programme"},
+    {"question": "What is Health ID / ABHA?", "answer": "ABHA (Ayushman Bharat Health Account) is a unique 14-digit health ID to store and share health records digitally across India.", "category": "health", "scheme": "National Digital Health Mission"},
+    {"question": "How to create an ABHA Health ID?", "answer": "Create on the ABHA portal healthid.ndhm.gov.in or ABHA app using your Aadhaar or driving license.", "category": "health", "scheme": "National Digital Health Mission"},
+    {"question": "What schemes exist for differently abled?", "answer": "Disability Pension under NSAP, UDID registration (unique disability ID), Sugamya Bharat Abhiyan (accessibility), and extra reservation in government schemes.", "category": "general", "scheme": ""},
 
-    # ===== STATE SCHEMES - MAHARASHTRA (5) =====
-    {"question": "What is Majhi Kanya Bhagyashree?", "answer": "Maharashtra scheme providing ₹50,000 insurance and financial support for girl children.", "category": "social", "scheme": "Majhi Kanya Bhagyashree"},
-    {"question": "Who is eligible for Majhi Kanya Bhagyashree?", "answer": "Girl children born in Maharashtra families with income below ₹7.5 lakh.", "category": "social", "scheme": "Majhi Kanya Bhagyashree"},
-    {"question": "What is Maharashtra Gharkul Yojana?", "answer": "Housing scheme providing ₹1.2 lakh for pucca house in rural Maharashtra.", "category": "housing", "scheme": "Maharashtra Gharkul Yojana"},
-    {"question": "What is Mahatma Phule Jan Arogya Yojana?", "answer": "Free health insurance covering 971 surgeries for Maharashtra families.", "category": "health", "scheme": "Mahatma Phule Jan Arogya Yojana"},
-    {"question": "How to avail Mahatma Phule Jan Arogya?", "answer": "Visit empaneled hospital with yellow/orange ration card for cashless treatment.", "category": "health", "scheme": "Mahatma Phule Jan Arogya Yojana"},
-
-    # ===== STATE SCHEMES - KARNATAKA (4) =====
-    {"question": "What is Karnataka Gruha Lakshmi?", "answer": "₹2,000 monthly to women heads of households in Karnataka.", "category": "social", "scheme": "Karnataka Gruha Lakshmi Scheme"},
-    {"question": "How to apply for Gruha Lakshmi?", "answer": "Apply on Seva Sindhu portal with Aadhaar and ration card.", "category": "social", "scheme": "Karnataka Gruha Lakshmi Scheme"},
-    {"question": "What is Karnataka Yuva Nidhi?", "answer": "₹3,000/month unemployment allowance for graduates in Karnataka.", "category": "education", "scheme": "Karnataka Yuva Nidhi Scheme"},
-    {"question": "Who is eligible for Yuva Nidhi?", "answer": "Unemployed graduates/diploma holders under 30 years in Karnataka.", "category": "education", "scheme": "Karnataka Yuva Nidhi Scheme"},
-
-    # ===== STATE SCHEMES - TAMIL NADU (3) =====
-    {"question": "What is Kalaignar Magalir Urimai Thogai?", "answer": "₹1,000 monthly to eligible women in Tamil Nadu.", "category": "social", "scheme": "Tamil Nadu Kalaignar Magalir Urimai Thogai"},
-    {"question": "What is Tamil Nadu Free Laptop Scheme?", "answer": "Free laptops for students in government schools and colleges in TN.", "category": "education", "scheme": "Tamil Nadu Free Laptop Scheme"},
-    {"question": "How to get free laptop in Tamil Nadu?", "answer": "Automatic distribution for students enrolled in government institutions.", "category": "education", "scheme": "Tamil Nadu Free Laptop Scheme"},
-
-    # ===== STATE SCHEMES - UTTAR PRADESH (4) =====
-    {"question": "What is UP Kanya Sumangala Yojana?", "answer": "₹15,000 in 6 stages from birth to graduation for girls in UP.", "category": "social", "scheme": "UP Kanya Sumangala Yojana"},
-    {"question": "How to apply for Kanya Sumangala?", "answer": "Apply online at mksy.up.gov.in with parents' details.", "category": "social", "scheme": "UP Kanya Sumangala Yojana"},
-    {"question": "What is UP Berojgari Bhatta?", "answer": "₹1,000-1,500/month unemployment allowance for educated youth in UP.", "category": "education", "scheme": "UP Berojgari Bhatta"},
-    {"question": "How to apply for UP Berojgari Bhatta?", "answer": "Register on UP Sewayojan portal with education certificates.", "category": "education", "scheme": "UP Berojgari Bhatta"},
-
-    # ===== STATE SCHEMES - WEST BENGAL (4) =====
-    {"question": "What is Kanyashree Prakalpa?", "answer": "₹750 annual scholarship and ₹25,000 one-time grant for girls in WB.", "category": "education", "scheme": "Kanyashree Prakalpa"},
-    {"question": "How to apply for Kanyashree?", "answer": "School/college distributes forms. Income must be below ₹1.2 lakh.", "category": "education", "scheme": "Kanyashree Prakalpa"},
-    {"question": "What is Lakshmir Bhandar?", "answer": "₹500-1,000/month to women in West Bengal.", "category": "social", "scheme": "Lakshmir Bhandar"},
-    {"question": "How to apply for Lakshmir Bhandar?", "answer": "Apply at Duare Sarkar camp or online with Aadhaar and bank details.", "category": "social", "scheme": "Lakshmir Bhandar"},
-
-    # ===== STATE SCHEMES - GUJARAT (3) =====
-    {"question": "What is Gujarat Vahali Dikri Yojana?", "answer": "₹4,000 at Class 1, ₹6,000 at Class 9, ₹1 lakh at age 18 for girls.", "category": "social", "scheme": "Gujarat Vahali Dikri Yojana"},
-    {"question": "What is Gujarat Mukhyamantri Yuva Swavalamban?", "answer": "Up to 100% tuition fee waiver for EWS students in professional courses.", "category": "education", "scheme": "Gujarat Mukhyamantri Yuva Swavalamban Yojana"},
-    {"question": "How to apply for MYSY Gujarat?", "answer": "Apply on mysy.guj.nic.in with marksheets and income certificate.", "category": "education", "scheme": "Gujarat Mukhyamantri Yuva Swavalamban Yojana"},
-
-    # ===== STATE SCHEMES - RAJASTHAN (3) =====
-    {"question": "What is Rajasthan Chiranjeevi Yojana?", "answer": "Universal health insurance providing ₹25 lakh coverage in Rajasthan.", "category": "health", "scheme": "Rajasthan Chiranjeevi Yojana"},
-    {"question": "How to register for Chiranjeevi Yojana?", "answer": "Register through e-Mitra kiosk with Jan Aadhaar family ID.", "category": "health", "scheme": "Rajasthan Chiranjeevi Yojana"},
-    {"question": "What is Rajasthan Palanhar Yojana?", "answer": "₹500-1,000/month for orphan and destitute children in Rajasthan.", "category": "social", "scheme": "Rajasthan Palanhar Yojana"},
-
-    # ===== STATE SCHEMES - OTHERS (15) =====
-    {"question": "What is Kerala LIFE Mission?", "answer": "₹4 lakh for house construction for homeless families in Kerala.", "category": "housing", "scheme": "Kerala LIFE Mission"},
-    {"question": "What is Kerala Snehapoorvam?", "answer": "₹300-750/month for orphan students in Kerala.", "category": "education", "scheme": "Kerala Snehapoorvam Scheme"},
-    {"question": "What is Punjab Ashirwad Scheme?", "answer": "₹21,000 for marriage of daughters from poor families in Punjab.", "category": "social", "scheme": "Punjab Ashirwad Scheme"},
-    {"question": "What is Bihar Kanya Utthan Yojana?", "answer": "₹50,000+ from birth to graduation for girls in Bihar.", "category": "social", "scheme": "Bihar Mukhyamantri Kanya Utthan Yojana"},
-    {"question": "What is Bihar Student Credit Card?", "answer": "Education loan up to ₹4 lakh at 4% interest for Bihar students.", "category": "education", "scheme": "Bihar Student Credit Card Scheme"},
-    {"question": "How to apply for Bihar Student Credit Card?", "answer": "Apply online at 7 Nishchay portal with 12th marksheet.", "category": "education", "scheme": "Bihar Student Credit Card Scheme"},
-    {"question": "What is MP Ladli Laxmi Yojana?", "answer": "₹1,18,000 for girl children across education milestones in MP.", "category": "social", "scheme": "MP Ladli Laxmi Yojana"},
-    {"question": "What is AP YSR Rythu Bharosa?", "answer": "₹13,500 per year financial assistance to farmers in Andhra Pradesh.", "category": "agriculture", "scheme": "AP YSR Rythu Bharosa"},
-    {"question": "What is AP Amma Vodi?", "answer": "₹15,000/year to mothers for sending children to school in AP.", "category": "education", "scheme": "AP Amma Vodi Scheme"},
-    {"question": "What is Telangana Rythu Bandhu?", "answer": "₹10,000 per acre per year investment support for Telangana farmers.", "category": "agriculture", "scheme": "Telangana Rythu Bandhu Scheme"},
-    {"question": "What is Telangana Kalyana Lakshmi?", "answer": "₹1,00,116 for marriage of girls from weaker families in Telangana.", "category": "social", "scheme": "Telangana Kalyana Lakshmi Pathakam"},
-    {"question": "What is Odisha KALIA Yojana?", "answer": "₹25,000 for small farmers and ₹12,500 for landless in Odisha.", "category": "agriculture", "scheme": "Odisha KALIA Yojana"},
-    {"question": "What is Assam Orunodoi?", "answer": "₹1,250/month to one woman per family in Assam.", "category": "social", "scheme": "Assam Orunodoi Scheme"},
-    {"question": "What is Chhattisgarh Mahtari Vandan?", "answer": "₹1,000/month to married women in Chhattisgarh.", "category": "social", "scheme": "Chhattisgarh Mahtari Vandan Yojana"},
-    {"question": "What is Jharkhand Mukhyamantri Sukanya?", "answer": "Financial support from birth to age 18 for girls in Jharkhand.", "category": "social", "scheme": "Jharkhand Mukhyamantri Sukanya Yojana"},
-
-    # ===== ADDITIONAL SCHEME QUERIES (20) =====
-    {"question": "How to check scheme eligibility by state?", "answer": "Type your state name in the chatbot or use the state filter on the schemes page.", "category": "general", "scheme": ""},
-    {"question": "What schemes are available for women?", "answer": "PMAY, Ujjwala, Stand Up India, Sukanya Samriddhi, Beti Bachao and many state schemes.", "category": "general", "scheme": ""},
-    {"question": "What schemes are available for farmers?", "answer": "PM Kisan, KCC, Fasal Bima, Soil Health Card, PM KUSUM, and state-specific schemes.", "category": "general", "scheme": ""},
-    {"question": "What schemes are available for students?", "answer": "National Scholarships, PMKVY, Skill India, PM Research Fellowship, and state schemes.", "category": "general", "scheme": ""},
-    {"question": "What schemes are available for senior citizens?", "answer": "IGNOAPS, Atal Pension, Vayoshri Yojana, SCSS, and state pension schemes.", "category": "general", "scheme": ""},
-    {"question": "What schemes are for small business?", "answer": "Mudra Loan, PMEGP, Stand Up India, Startup India, PM SVANidhi, and PM Vishwakarma.", "category": "general", "scheme": ""},
-    {"question": "How to track my scheme application?", "answer": "Use the official scheme portal's 'Track Status' with your application/registration number.", "category": "general", "scheme": ""},
-    {"question": "What is Direct Benefit Transfer?", "answer": "DBT transfers subsidies directly to your Aadhaar-linked bank account without middlemen.", "category": "general", "scheme": ""},
-    {"question": "How to link Aadhaar with bank account?", "answer": "Visit your bank branch with Aadhaar card or use the bank's mobile app/net banking.", "category": "general", "scheme": ""},
-    {"question": "What is PM KUSUM?", "answer": "Provides solar pumps and grid-connected solar power plants to farmers.", "category": "agriculture", "scheme": ""},
-    {"question": "What is Haryana Ladli scheme?", "answer": "₹2,750/month pension to parents with only girl children in Haryana.", "category": "social", "scheme": "Haryana Ladli Social Security Allowance"},
-    {"question": "What is MP Yuva Internship?", "answer": "₹8,000/month stipend for paid internship in MP government offices.", "category": "education", "scheme": "MP Mukhyamantri Yuva Internship Yojana"},
-    {"question": "What is Odisha Madhu Babu Pension?", "answer": "₹500-700/month pension for elderly, widows, and disabled in Odisha.", "category": "social", "scheme": "Odisha Madhu Babu Pension Yojana"},
-    {"question": "What health schemes are available?", "answer": "Ayushman Bharat, NHM, ABHA Health ID, Jan Aushadhi, and state health insurance.", "category": "general", "scheme": ""},
-    {"question": "What housing schemes are available?", "answer": "PMAY, Swachh Bharat Mission, Jal Jeevan Mission, Ujjwala, and state housing schemes.", "category": "general", "scheme": ""},
-    {"question": "How to apply for a pension scheme?", "answer": "Visit your bank (for APY) or block office (for IGNOAPS) with Aadhaar and bank details.", "category": "general", "scheme": ""},
-    {"question": "What insurance schemes are free?", "answer": "PMSBY (₹20/year) and PMJJBY (₹436/year) provide accident and life insurance.", "category": "general", "scheme": ""},
-    {"question": "How to get free education loan?", "answer": "Apply on PM Vidya Lakshmi portal or through state credit card schemes.", "category": "general", "scheme": ""},
-    {"question": "What schemes exist for differently abled?", "answer": "Disability Pension under NSAP, UDID registration, and Sugamya Bharat Abhiyan.", "category": "general", "scheme": ""},
-    {"question": "How to contact SATYA support?", "answer": "Use the Contact Us page link in the footer for any platform-related queries.", "category": "general", "scheme": ""},
+    # ===============================================================
+    # ===== ADDITIONAL COMMON QUERIES (15) =====
+    # ===============================================================
+    {"question": "How to check scheme eligibility by state?", "answer": "Type your state name in this chatbot or use the state filter on the Schemes page. You can also select your state in the Check Eligibility profile form.", "category": "general", "scheme": ""},
+    {"question": "How to track my scheme application?", "answer": "Use the official scheme portal's 'Track Status' feature with your Application Reference Number or Aadhaar number. SATYA helps you find the portal link.", "category": "general", "scheme": ""},
+    {"question": "How to apply for a pension scheme?", "answer": "For APY: Visit your bank branch. For IGNOAPS: Apply at block office. For PM Shram Yogi: Register on maandhan.in. All require Aadhaar and bank details.", "category": "general", "scheme": ""},
+    {"question": "What insurance schemes are available?", "answer": "PMSBY (₹20/year accident insurance), PMJJBY (₹436/year life insurance), Ayushman Bharat (₹5L health cover), and state health insurance schemes.", "category": "general", "scheme": ""},
+    {"question": "How to get free education loan?", "answer": "Apply on PM Vidya Lakshmi portal vidyalakshmi.co.in or through state credit card schemes like Bihar Student Credit Card.", "category": "general", "scheme": ""},
+    {"question": "What housing schemes are available?", "answer": "PMAY (housing subsidy), Swachh Bharat (toilet subsidy), Jal Jeevan Mission (tap water), Ujjwala (LPG gas), and state housing schemes.", "category": "general", "scheme": ""},
+    {"question": "What health schemes are available?", "answer": "Ayushman Bharat (₹5L insurance), NHM, ABHA Health ID, Jan Aushadhi (affordable medicines), and state health schemes like Chiranjeevi.", "category": "general", "scheme": ""},
+    {"question": "What is PM KUSUM?", "answer": "PM-KUSUM provides solar water pumps, grid-connected solar power plants, and solarization of agriculture pumps for farmers.", "category": "agriculture", "scheme": ""},
+    {"question": "Can I apply for multiple schemes?", "answer": "Yes! You can apply for multiple schemes simultaneously. Many central and state schemes can be availed together. Check eligibility for each scheme separately.", "category": "general", "scheme": ""},
+    {"question": "What is Aadhaar seeding?", "answer": "Aadhaar seeding means linking your Aadhaar number with your bank account, LPG connection, ration card, etc., for Direct Benefit Transfer.", "category": "general", "scheme": ""},
+    {"question": "What is E-Shram Card?", "answer": "E-Shram is a national database for unorganized workers. Registration provides a unique UAN number and accidental insurance of ₹2 lakh.", "category": "social", "scheme": ""},
+    {"question": "How to register on E-Shram?", "answer": "Register at eshram.gov.in or through a CSC using your Aadhaar and mobile number. It's free and provides accident insurance.", "category": "social", "scheme": ""},
+    {"question": "What is Rashtriya Vayoshri Yojana?", "answer": "Free physical aids like wheelchairs, hearing aids, walking sticks, and spectacles for BPL senior citizens above 60 years.", "category": "social", "scheme": "Rashtriya Vayoshri Yojana"},
+    {"question": "What is the chatbot useful for?", "answer": "This chatbot helps you: 1) Find government schemes 2) Check eligibility criteria 3) Know application steps 4) Understand Document Vault features 5) Get answers about SATYA in your own language.", "category": "general", "scheme": ""},
+    {"question": "How does the chatbot translate?", "answer": "The chatbot automatically detects your language. You can also set your preferred language from the navigation bar. Responses are translated using AI into all 23 official Indian languages.", "category": "general", "scheme": ""},
+    {"question": "How can I see the checks performed on a stored document?", "answer": "Open the Document Vault and select the document's verification trail to review its OCR extraction, quality check, QR validation, identity match, and fraud detection results.", "category": "vault", "scheme": ""},
+    {"question": "What should I check if my Aadhaar verification does not pass?", "answer": "Use a clear, complete image of your genuine Aadhaar card, avoid blur and glare, and make sure the QR code is fully visible. The verification result includes the checks that need attention.", "category": "vault", "scheme": ""},
+    {"question": "How does a verified caste certificate help me?", "answer": "SATYA extracts and verifies the caste category from an uploaded caste certificate so the eligibility matching process can use that verified category.", "category": "vault", "scheme": ""},
+    {"question": "What happens after my Aadhaar is verified in the Vault?", "answer": "SATYA links the verified Aadhaar identity to your account with an Identity Lock. This helps prevent another person from using a different identity document on the same account.", "category": "vault", "scheme": ""},
+    {"question": "How do I know whether a document is fully verified?", "answer": "Review the document status and verification trail in the Document Vault. The trail records the checks performed, including OCR, image quality, QR validation, identity matching, and fraud detection.", "category": "vault", "scheme": ""},
+    {"question": "Why can a document receive a medium or high risk score?", "answer": "The risk score summarizes the document assessment. Image quality problems can contribute to medium risk, while suspicious signs or possible fraud can result in high risk; review the verification trail for details.", "category": "vault", "scheme": ""},
+    {"question": "Which profile details affect my scheme matches?", "answer": "The eligibility engine compares details such as age, income, state, category, gender, occupation, education, and relevant special conditions with each scheme's rules.", "category": "eligibility", "scheme": ""},
+    {"question": "Are SATYA eligibility results a guarantee that I will receive a benefit?", "answer": "No. SATYA's eligibility result is an indicative match based on the information and scheme rules available on the platform. The government department makes the final decision on an application.", "category": "eligibility", "scheme": ""},
+    {"question": "Why might I be marked partially eligible for a scheme?", "answer": "Partially Eligible means your profile matches most of the listed criteria, but one or more conditions may not be fully met. Review the reasons shown with that scheme and confirm the official requirements.", "category": "eligibility", "scheme": ""},
+    {"question": "How can I find out why I did not match a scheme?", "answer": "Open the scheme in your eligibility results and review the matching status and reasons. Check that your age, income, state, category, occupation, and other profile details are accurate.", "category": "eligibility", "scheme": ""},
+    {"question": "Can I check central and state schemes together?", "answer": "Yes. The eligibility engine compares your profile with the available central and state schemes. Your selected state is used when matching state-specific schemes.", "category": "eligibility", "scheme": ""},
+    {"question": "What should I do if no schemes appear in my eligibility results?", "answer": "Review your profile for missing or incorrect details, especially state, income, category, age, and occupation. Scheme rules can be specific, and SATYA's results depend on the scheme information currently available.", "category": "eligibility", "scheme": ""},
+    {"question": "How do I move from an eligibility result to an application?", "answer": "Open the scheme details from your results, review the official eligibility and required documents, then use the official portal link to submit your application to the government department.", "category": "eligibility", "scheme": ""},
+    {"question": "Can I qualify for more than one government scheme?", "answer": "Yes. You can check and apply for multiple schemes when you meet each scheme's requirements. Confirm any scheme-specific restrictions on its official portal.", "category": "eligibility", "scheme": ""},
 ]
 
 def get_faqs():

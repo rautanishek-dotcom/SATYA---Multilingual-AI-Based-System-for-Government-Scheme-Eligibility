@@ -12,6 +12,7 @@ import DocumentVerification from './pages/DocumentVerification';
 import AadhaarVerification from './pages/AadhaarVerification';
 import DocumentVault from './pages/DocumentVault';
 import AdminDiagnostics from './pages/AdminDiagnostics';
+import LanguageSync from './components/LanguageSync';
 
 
 const ProtectedRoute = ({ children }) => {
@@ -35,6 +36,7 @@ const AdminRoute = ({ children }) => {
 function App() {
   return (
     <div className="App">
+      <LanguageSync />
       <Navbar />
       <div style={{ paddingTop: '70px', minHeight: '100vh', width: '100%' }}>
          <Routes>

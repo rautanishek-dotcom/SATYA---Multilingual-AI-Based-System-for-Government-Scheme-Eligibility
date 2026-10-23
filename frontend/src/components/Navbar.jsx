@@ -9,6 +9,8 @@ const Navbar = () => {
   const navigate = useNavigate();
 
   const changeLanguage = (lng) => {
+    localStorage.setItem('language', lng);
+    localStorage.setItem('satya_language', lng);
     i18n.changeLanguage(lng);
     setIsOpen(false);
   };
@@ -67,11 +69,11 @@ const Navbar = () => {
 
         {/* Desktop Menu */}
         <div style={styles.desktopMenu}>
-          <Link to="/" style={styles.link}>{t('Home') || 'Home'}</Link>
+          <Link to="/" style={styles.link}>{t('Home')}</Link>
           <Link to="/schemes" style={styles.link}>{t('Schemes')}</Link>
           <Link to="/check" style={styles.link}>{t('EligibilityEngine')}</Link>
-           {token && <Link to="/vault" style={styles.link}>{t('Vault', 'Document Vault')}</Link>}
-          {isAdmin && <Link to="/admin" style={styles.link}>{t('Admin', 'Admin')}</Link>}
+           {token && <Link to="/vault" style={styles.link}>{t('Vault')}</Link>}
+          {isAdmin && <Link to="/admin" style={styles.link}>{t('Admin')}</Link>}
           
           <div style={styles.langSelector}>
             <Globe size={18} />
@@ -81,14 +83,28 @@ const Navbar = () => {
               style={styles.select}
             >
               <option value="en" style={{color: '#000'}}>English</option>
-              <option value="hi" style={{color: '#000'}}>हिंदी (Hindi)</option>
+              <option value="as" style={{color: '#000'}}>অসমীয়া (Assamese)</option>
               <option value="bn" style={{color: '#000'}}>বাংলা (Bengali)</option>
-              <option value="mr" style={{color: '#000'}}>मराठी (Marathi)</option>
-              <option value="te" style={{color: '#000'}}>తెలుగు (Telugu)</option>
-              <option value="ta" style={{color: '#000'}}>தமிழ் (Tamil)</option>
+              <option value="brx" style={{color: '#000'}}>बड़ो (Bodo)</option>
+              <option value="doi" style={{color: '#000'}}>डोगरी (Dogri)</option>
               <option value="gu" style={{color: '#000'}}>ગુજરાતી (Gujarati)</option>
+              <option value="hi" style={{color: '#000'}}>हिंदी (Hindi)</option>
               <option value="kn" style={{color: '#000'}}>ಕನ್ನಡ (Kannada)</option>
+              <option value="ks" style={{color: '#000'}}>كشميري (Kashmiri)</option>
+              <option value="kok" style={{color: '#000'}}>कोंकणी (Konkani)</option>
+              <option value="mai" style={{color: '#000'}}>मैथिली (Maithili)</option>
               <option value="ml" style={{color: '#000'}}>മലയാളം (Malayalam)</option>
+              <option value="mni" style={{color: '#000'}}>মৈতৈলোন্ (Manipuri)</option>
+              <option value="mr" style={{color: '#000'}}>मराठी (Marathi)</option>
+              <option value="ne" style={{color: '#000'}}>नेपाली (Nepali)</option>
+              <option value="or" style={{color: '#000'}}>ଓଡ଼ିଆ (Odia)</option>
+              <option value="pa" style={{color: '#000'}}>ਪੰਜਾਬੀ (Punjabi)</option>
+              <option value="sa" style={{color: '#000'}}>संस्कृतम् (Sanskrit)</option>
+              <option value="sat" style={{color: '#000'}}>ᱥᱟᱱᱛᱟᱲᱤ (Santali)</option>
+              <option value="sd" style={{color: '#000'}}>سنڌي (Sindhi)</option>
+              <option value="ta" style={{color: '#000'}}>தமிழ் (Tamil)</option>
+              <option value="te" style={{color: '#000'}}>తెలుగు (Telugu)</option>
+              <option value="ur" style={{color: '#000'}}>اردو (Urdu)</option>
             </select>
           </div>
           
@@ -115,8 +131,8 @@ const Navbar = () => {
           <Link to="/" style={styles.mobileLink} onClick={() => setIsOpen(false)}>{t('Home')}</Link>
           <Link to="/schemes" style={styles.mobileLink} onClick={() => setIsOpen(false)}>{t('Schemes')}</Link>
           <Link to="/check" style={styles.mobileLink} onClick={() => setIsOpen(false)}>{t('EligibilityEngine')}</Link>
-           {token && <Link to="/vault" style={styles.mobileLink} onClick={() => setIsOpen(false)}>{t('Vault', 'Document Vault')}</Link>}
-          {isAdmin && <Link to="/admin" style={styles.mobileLink} onClick={() => setIsOpen(false)}>{t('Admin', 'Admin')}</Link>}
+           {token && <Link to="/vault" style={styles.mobileLink} onClick={() => setIsOpen(false)}>{t('Vault')}</Link>}
+          {isAdmin && <Link to="/admin" style={styles.mobileLink} onClick={() => setIsOpen(false)}>{t('Admin')}</Link>}
           <div style={{ ...styles.mobileLink, ...styles.langSelector }}>
             <Globe size={18} />
             <select 
@@ -125,14 +141,28 @@ const Navbar = () => {
               style={styles.select}
             >
               <option value="en" style={{color: '#000'}}>English</option>
-              <option value="hi" style={{color: '#000'}}>हिंदी (Hindi)</option>
+              <option value="as" style={{color: '#000'}}>অসমীয়া (Assamese)</option>
               <option value="bn" style={{color: '#000'}}>বাংলা (Bengali)</option>
-              <option value="mr" style={{color: '#000'}}>मराठी (Marathi)</option>
-              <option value="te" style={{color: '#000'}}>తెలుగు (Telugu)</option>
-              <option value="ta" style={{color: '#000'}}>தமிழ் (Tamil)</option>
+              <option value="brx" style={{color: '#000'}}>बड़ो (Bodo)</option>
+              <option value="doi" style={{color: '#000'}}>डोगरी (Dogri)</option>
               <option value="gu" style={{color: '#000'}}>ગુજરાતી (Gujarati)</option>
+              <option value="hi" style={{color: '#000'}}>हिंदी (Hindi)</option>
               <option value="kn" style={{color: '#000'}}>ಕನ್ನಡ (Kannada)</option>
+              <option value="ks" style={{color: '#000'}}>كشميري (Kashmiri)</option>
+              <option value="kok" style={{color: '#000'}}>कोंकणी (Konkani)</option>
+              <option value="mai" style={{color: '#000'}}>मैथिली (Maithili)</option>
               <option value="ml" style={{color: '#000'}}>മലയാളം (Malayalam)</option>
+              <option value="mni" style={{color: '#000'}}>মৈতৈলোন্ (Manipuri)</option>
+              <option value="mr" style={{color: '#000'}}>मराठी (Marathi)</option>
+              <option value="ne" style={{color: '#000'}}>नेपाली (Nepali)</option>
+              <option value="or" style={{color: '#000'}}>ଓଡ଼ିଆ (Odia)</option>
+              <option value="pa" style={{color: '#000'}}>ਪੰਜਾਬੀ (Punjabi)</option>
+              <option value="sa" style={{color: '#000'}}>संस्कृतम् (Sanskrit)</option>
+              <option value="sat" style={{color: '#000'}}>ᱥᱟᱱᱛᱟᱲᱤ (Santali)</option>
+              <option value="sd" style={{color: '#000'}}>سنڌي (Sindhi)</option>
+              <option value="ta" style={{color: '#000'}}>தமிழ் (Tamil)</option>
+              <option value="te" style={{color: '#000'}}>తెలుగు (Telugu)</option>
+              <option value="ur" style={{color: '#000'}}>اردو (Urdu)</option>
             </select>
           </div>
           {token ? (

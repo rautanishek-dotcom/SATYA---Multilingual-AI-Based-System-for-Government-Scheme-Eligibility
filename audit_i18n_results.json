@@ -1,0 +1,143 @@
+{
+  "total_en_keys": 594,
+  "langs": {
+    "en": {
+      "keys": 594,
+      "missing": 0,
+      "empty": 0,
+      "placeholders": 584
+    },
+    "hi": {
+      "keys": 595,
+      "missing": 0,
+      "empty": 0,
+      "placeholders": 1
+    },
+    "bn": {
+      "keys": 595,
+      "missing": 0,
+      "empty": 0,
+      "placeholders": 1
+    },
+    "mr": {
+      "keys": 594,
+      "missing": 0,
+      "empty": 0,
+      "placeholders": 1
+    },
+    "te": {
+      "keys": 594,
+      "missing": 0,
+      "empty": 0,
+      "placeholders": 1
+    },
+    "ta": {
+      "keys": 594,
+      "missing": 0,
+      "empty": 0,
+      "placeholders": 1
+    },
+    "gu": {
+      "keys": 594,
+      "missing": 0,
+      "empty": 0,
+      "placeholders": 1
+    },
+    "kn": {
+      "keys": 594,
+      "missing": 0,
+      "empty": 0,
+      "placeholders": 1
+    },
+    "ml": {
+      "keys": 594,
+      "missing": 0,
+      "empty": 0,
+      "placeholders": 1
+    },
+    "as": {
+      "keys": 594,
+      "missing": 0,
+      "empty": 0,
+      "placeholders": 0
+    },
+    "brx": {
+      "keys": 594,
+      "missing": 0,
+      "empty": 0,
+      "placeholders": 0
+    },
+    "doi": {
+      "keys": 594,
+      "missing": 0,
+      "empty": 0,
+      "placeholders": 1
+    },
+    "ks": {
+      "keys": 594,
+      "missing": 0,
+      "empty": 0,
+      "placeholders": 1
+    },
+    "kok": {
+      "keys": 594,
+      "missing": 0,
+      "empty": 0,
+      "placeholders": 5
+    },
+    "mai": {
+      "keys": 594,
+      "missing": 0,
+      "empty": 0,
+      "placeholders": 0
+    },
+    "mni": {
+      "keys": 594,
+      "missing": 0,
+      "empty": 0,
+      "placeholders": 1
+    },
+    "ne": {
+      "keys": 594,
+      "missing": 0,
+      "empty": 0,
+      "placeholders": 1
+    },
+    "or": {
+      "keys": 594,
+      "missing": 0,
+      "empty": 0,
+      "placeholders": 3
+    },
+    "pa": {
+      "keys": 594,
+      "missing": 0,
+      "empty": 0,
+      "placeholders": 1
+    },
+    "sa": {
+      "keys": 594,
+      "missing": 0,
+      "empty": 0,
+      "placeholders": 0
+    },
+    "sat": {
+      "keys": 594,
+      "missing": 0,
+      "empty": 0,
+      "placeholders": 1
+    },
+    "sd": {
+      "keys": 594,
+      "missing": 0,
+      "empty": 0,
+      "placeholders": 1
+    },
+    "ur": {
+      "keys": 594,
+      "missing": 0,
+      "empty": 0,
+      "placeholders": 1
+    }
+  }
+}

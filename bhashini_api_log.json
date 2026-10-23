@@ -1,0 +1,992 @@
+{
+  "calls": [
+    {
+      "timestamp": "2026-10-08T21:26:50.788760",
+      "lang": "mr",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:26:55.708484",
+      "lang": "mr",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:26:59.909732",
+      "lang": "mr",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:27:06.554064",
+      "lang": "mr",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:27:11.059245",
+      "lang": "mr",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:27:14.965129",
+      "lang": "mr",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:27:16.898017",
+      "lang": "mr",
+      "batch_size": 9,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:27:21.196657",
+      "lang": "te",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:27:27.152683",
+      "lang": "te",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:27:32.160727",
+      "lang": "te",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:27:36.568141",
+      "lang": "te",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:27:40.758040",
+      "lang": "te",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:27:45.048697",
+      "lang": "te",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:27:47.103733",
+      "lang": "te",
+      "batch_size": 9,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:27:51.206007",
+      "lang": "ta",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:27:56.336370",
+      "lang": "ta",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:28:01.440328",
+      "lang": "ta",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:28:05.652397",
+      "lang": "ta",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:28:09.942792",
+      "lang": "ta",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:28:14.140385",
+      "lang": "ta",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:28:16.510508",
+      "lang": "ta",
+      "batch_size": 13,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:28:20.793235",
+      "lang": "gu",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:28:25.303371",
+      "lang": "gu",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:28:29.399142",
+      "lang": "gu",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:28:33.388329",
+      "lang": "gu",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:28:38.929590",
+      "lang": "gu",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:28:43.122172",
+      "lang": "gu",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:28:44.979091",
+      "lang": "gu",
+      "batch_size": 6,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:28:49.672000",
+      "lang": "kn",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:28:53.772047",
+      "lang": "kn",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:28:58.782580",
+      "lang": "kn",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:29:02.583152",
+      "lang": "kn",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:29:07.487355",
+      "lang": "kn",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:29:12.030649",
+      "lang": "kn",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:29:14.550784",
+      "lang": "kn",
+      "batch_size": 9,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:29:18.750829",
+      "lang": "ml",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:29:23.165462",
+      "lang": "ml",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:29:28.589374",
+      "lang": "ml",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:29:32.896250",
+      "lang": "ml",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:29:38.104221",
+      "lang": "ml",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:29:42.115746",
+      "lang": "ml",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:29:44.250890",
+      "lang": "ml",
+      "batch_size": 8,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:29:48.421527",
+      "lang": "as",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:29:52.551685",
+      "lang": "as",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:29:59.097934",
+      "lang": "as",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:30:03.608350",
+      "lang": "as",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:30:07.805700",
+      "lang": "as",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:30:12.109420",
+      "lang": "as",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:30:15.282245",
+      "lang": "as",
+      "batch_size": 9,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:30:22.647884",
+      "lang": "brx",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:30:26.862729",
+      "lang": "brx",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:30:30.947209",
+      "lang": "brx",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:30:36.642183",
+      "lang": "brx",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:30:49.068748",
+      "lang": "brx",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:30:53.168570",
+      "lang": "brx",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:30:55.212607",
+      "lang": "brx",
+      "batch_size": 9,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:31:00.646482",
+      "lang": "doi",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:31:05.864292",
+      "lang": "doi",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:31:11.491172",
+      "lang": "doi",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:31:15.818871",
+      "lang": "doi",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:31:20.007896",
+      "lang": "doi",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:31:24.396619",
+      "lang": "doi",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:31:26.753863",
+      "lang": "doi",
+      "batch_size": 10,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:31:31.052593",
+      "lang": "ks",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:31:35.661970",
+      "lang": "ks",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:31:39.554050",
+      "lang": "ks",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:31:43.864722",
+      "lang": "ks",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:31:48.682189",
+      "lang": "ks",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:31:53.690721",
+      "lang": "ks",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:31:56.445635",
+      "lang": "ks",
+      "batch_size": 9,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:32:05.570712",
+      "lang": "kok",
+      "batch_size": 50,
+      "success": false,
+      "retries": 3
+    },
+    {
+      "timestamp": "2026-10-08T21:32:14.479968",
+      "lang": "kok",
+      "batch_size": 50,
+      "success": false,
+      "retries": 3
+    },
+    {
+      "timestamp": "2026-10-08T21:32:24.205413",
+      "lang": "kok",
+      "batch_size": 50,
+      "success": false,
+      "retries": 3
+    },
+    {
+      "timestamp": "2026-10-08T21:32:33.320427",
+      "lang": "kok",
+      "batch_size": 50,
+      "success": false,
+      "retries": 3
+    },
+    {
+      "timestamp": "2026-10-08T21:32:44.030700",
+      "lang": "kok",
+      "batch_size": 50,
+      "success": false,
+      "retries": 3
+    },
+    {
+      "timestamp": "2026-10-08T21:32:53.183154",
+      "lang": "kok",
+      "batch_size": 50,
+      "success": false,
+      "retries": 3
+    },
+    {
+      "timestamp": "2026-10-08T21:33:02.406560",
+      "lang": "kok",
+      "batch_size": 10,
+      "success": false,
+      "retries": 3
+    },
+    {
+      "timestamp": "2026-10-08T21:33:06.085163",
+      "lang": "mai",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:33:10.179140",
+      "lang": "mai",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:33:14.578338",
+      "lang": "mai",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:33:19.288016",
+      "lang": "mai",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:33:23.699547",
+      "lang": "mai",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:33:28.105089",
+      "lang": "mai",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:33:29.937824",
+      "lang": "mai",
+      "batch_size": 8,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:33:34.035722",
+      "lang": "mni",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:33:38.950679",
+      "lang": "mni",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:33:43.456378",
+      "lang": "mni",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:33:48.268476",
+      "lang": "mni",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:33:52.014921",
+      "lang": "mni",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:33:56.261719",
+      "lang": "mni",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:33:59.742119",
+      "lang": "mni",
+      "batch_size": 11,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:34:03.531935",
+      "lang": "ne",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:34:07.621173",
+      "lang": "ne",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:34:12.133200",
+      "lang": "ne",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:34:16.298826",
+      "lang": "ne",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:34:20.467430",
+      "lang": "ne",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:34:24.628271",
+      "lang": "ne",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:34:26.769757",
+      "lang": "ne",
+      "batch_size": 10,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:34:30.868283",
+      "lang": "or",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:34:37.011918",
+      "lang": "or",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:34:41.079664",
+      "lang": "or",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:34:45.412898",
+      "lang": "or",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:34:49.413441",
+      "lang": "or",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:34:53.602252",
+      "lang": "or",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:34:55.974229",
+      "lang": "or",
+      "batch_size": 15,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:35:00.398899",
+      "lang": "pa",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:35:04.464288",
+      "lang": "pa",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:35:08.760487",
+      "lang": "pa",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:35:13.578261",
+      "lang": "pa",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:35:17.781404",
+      "lang": "pa",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:35:22.355289",
+      "lang": "pa",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:35:25.549293",
+      "lang": "pa",
+      "batch_size": 10,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:35:29.751942",
+      "lang": "sa",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:35:35.072281",
+      "lang": "sa",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:35:39.369649",
+      "lang": "sa",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:35:43.571998",
+      "lang": "sa",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:35:47.669601",
+      "lang": "sa",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:35:51.730613",
+      "lang": "sa",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:35:53.726308",
+      "lang": "sa",
+      "batch_size": 10,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:35:58.535093",
+      "lang": "sat",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:36:04.004868",
+      "lang": "sat",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:36:08.108433",
+      "lang": "sat",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:36:12.454144",
+      "lang": "sat",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:36:18.181804",
+      "lang": "sat",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:36:22.298033",
+      "lang": "sat",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:36:24.636227",
+      "lang": "sat",
+      "batch_size": 16,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:36:28.731562",
+      "lang": "sd",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:36:33.548777",
+      "lang": "sd",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:36:37.738431",
+      "lang": "sd",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:36:42.044430",
+      "lang": "sd",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:36:46.551590",
+      "lang": "sd",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:36:52.076392",
+      "lang": "sd",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:36:55.047024",
+      "lang": "sd",
+      "batch_size": 23,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:37:00.883288",
+      "lang": "ur",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:37:08.108341",
+      "lang": "ur",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:37:11.849907",
+      "lang": "ur",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:37:15.630942",
+      "lang": "ur",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:37:21.161989",
+      "lang": "ur",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:37:25.468857",
+      "lang": "ur",
+      "batch_size": 50,
+      "success": true,
+      "retries": 0
+    },
+    {
+      "timestamp": "2026-10-08T21:37:27.818023",
+      "lang": "ur",
+      "batch_size": 11,
+      "success": true,
+      "retries": 0
+    }
+  ],
+  "summary": {
+    "successful": 133,
+    "failed": 7,
+    "retries": 0,
+    "cache_hits": 3288,
+    "cache_misses": 6215,
+    "total_segments": 5905
+  }
+}

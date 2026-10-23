@@ -8,6 +8,7 @@ import numpy as np
 from PIL import Image
 import pytesseract
 import time
+import datetime
 try:
     from pyzbar.pyzbar import decode
     PYZBAR_AVAILABLE = True
@@ -86,6 +87,93 @@ def clean_val_no_space(val):
     """Clean extracted text without spaces for flexible matching."""
     if not val: return ""
     return re.sub(r'[^a-z0-9]', '', str(val).lower()).strip()
+
+
+def extract_disability_certificate_details(raw_text):
+    """Extract only disability evidence from a disability certificate's OCR text."""
+    text = re.sub(r'\s+', ' ', raw_text or '').strip()
+    text_lower = text.lower()
+    type_patterns = {
+        'locomotor': r'\b(?:locomotor|orthopaedic|orthopedic|physical disability|mobility impairment|cerebral palsy|muscular dystrophy|leprosy cured|dwarfism|acid attack)\b',
+        'visual': r'\b(?:visual impairment|low vision|blind(?:ness)?|vision impairment)\b',
+        'hearing': r'\b(?:hearing impairment|hearing disability|hard of hearing|deaf(?:ness)?|speech and language disability|speech disability)\b',
+        'intellectual': r'\b(?:intellectual disability|developmental disability|specific learning disability|autism(?: spectrum disorder)?)\b',
+        'mental': r'\b(?:mental illness|mental disability|psychosocial disability)\b',
+        'multiple': r'\b(?:multiple disabilit(?:y|ies)|multiple impairment|more than one disability)\b',
+    }
+    matched_types = [name for name, pattern in type_patterns.items() if re.search(pattern, text_lower, re.IGNORECASE)]
+    disability_type = 'multiple' if len(matched_types) > 1 else (matched_types[0] if matched_types else '')
+    disability_markers = (
+        'disability', 'differently abled', 'person with disability',
+        'persons with disabilities', 'benchmark disability', 'udid', 'pwd',
+    )
+    has_disability_evidence = bool(disability_type) or any(marker in text_lower for marker in disability_markers)
+
+    word_values = {
+        'zero': 0, 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
+        'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10,
+        'eleven': 11, 'twelve': 12, 'thirteen': 13, 'fourteen': 14,
+        'fifteen': 15, 'sixteen': 16, 'seventeen': 17, 'eighteen': 18,
+        'nineteen': 19, 'twenty': 20, 'thirty': 30, 'forty': 40,
+        'fifty': 50, 'sixty': 60, 'seventy': 70, 'eighty': 80,
+        'ninety': 90, 'hundred': 100,
+    }
+    written_percentage = re.search(
+        r'\b((?:one\s+hundred)|(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[\s-]+(?:one|two|three|four|five|six|seven|eight|nine))?|(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen))\s*(?:percent(?:age)?(?:\s*in\b|in\b)?|per\s*cent)\b',
+        text_lower,
+        re.IGNORECASE,
+    )
+    percentage = ''
+    if written_percentage:
+        words = written_percentage.group(1).replace('-', ' ').split()
+        if words == ['one', 'hundred']:
+            percentage = '100'
+        else:
+            percentage = str(sum(word_values[word] for word in words))
+
+    percentage_patterns = (
+        r'\b(?:extent|percentage|percent(?:age)?|disability assessment|permanent disability)\s*(?:of\s+)?(?:disability\s*)?[:\-]?\s*(\d{1,3})\s*(?:%|percent(?:age)?|per\s*cent)(?=\s|$|[.,;])',
+        r'\b(\d{1,3})\s*(?:%|percent(?:age)?|per\s*cent)\s*(?:permanent\s*)?(?:disability|impairment|disabled)\b',
+        r'\b(?:disability|impairment)\s*[:\-]?\s*(\d{1,3})\s*(?:%|percent(?:age)?|per\s*cent)(?=\s|$|[.,;])',
+    )
+    if not percentage:
+        for pattern in percentage_patterns:
+            match = re.search(pattern, text_lower, re.IGNORECASE)
+            if not match:
+                continue
+            candidate = match.group(1)
+            if 0 <= int(candidate) <= 100:
+                percentage = candidate
+                break
+
+    if not percentage:
+        for words, value in word_values.items():
+            if re.search(rf'\b{words}\s*(?:%|percent(?:age)?|per\s*cent)\b', text_lower):
+                percentage = str(value)
+                break
+
+    if not percentage and has_disability_evidence:
+        generic_percentages = re.findall(r'\b(\d{1,3})\s*%', text_lower)
+        percentage = next((value for value in generic_percentages if 0 <= int(value) <= 100), '')
+
+    return {
+        'is_disability_certificate': has_disability_evidence,
+        'disability_type': disability_type or 'other',
+        'disability_percentage': percentage,
+    }
+
+
+def scan_disability_certificate(img):
+    """Read certificate text using layouts suited to cards, forms, and tables."""
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    processed = SATYAPixelEngine.neural_preprocess(img)
+    scans = []
+    for image, psm in ((img, 6), (gray, 11), (processed, 6), (processed, 11)):
+        try:
+            scans.append(pytesseract.image_to_string(image, config=f'--oem 3 --psm {psm}', lang='eng+hin'))
+        except pytesseract.TesseractError:
+            scans.append(pytesseract.image_to_string(image, config=f'--oem 3 --psm {psm}', lang='eng'))
+    return '\n'.join(scan for scan in scans if scan)
 
 class SATYAPixelEngine:
     @staticmethod
@@ -737,6 +825,15 @@ def scan_aadhaar_qr():
              proc = SATYAPixelEngine.neural_preprocess(img)
              raw_text = pytesseract.image_to_string(proc, config='--oem 3 --psm 4', lang='eng+hin')
              
+             # Reject if it's another document type entirely
+             doc_type_detected = SATYAPixelEngine.detect_type(raw_text)
+             if doc_type_detected in ["Caste Certificate", "Income Certificate"]:
+                 return jsonify({
+                    "status": "Failed",
+                    "message": f"Invalid Document: Uploaded file appears to be a {doc_type_detected}, not an Aadhaar Card.",
+                    "error_type": "invalid_document_type"
+                 }), 200
+                 
              print(f"[DEBUG OCR] Raw OCR text (first 500 chars): {raw_text[:500]}")
              
              # Extract from OCR text structurally: The Name always comes right before the DOB in e-Aadhaar/Digilocer
@@ -1029,23 +1126,20 @@ def upload_disability_certificate():
         ok, msg = SATYAPixelEngine.validate_quality(img)
         if not ok: return jsonify({"status": "Failed", "error": msg}), 200
 
-        # OCR Extraction
-        proc = SATYAPixelEngine.neural_preprocess(img)
-        raw_text = pytesseract.image_to_string(proc, config='--oem 3 --psm 6', lang='eng+hin')
+        raw_text = scan_disability_certificate(img)
         
-        extracted = {"name": "", "percentage": ""}
-        
-        # 1. Extract Disability Percentage (Look for digits followed by % or percentage)
-        percent_match = re.search(r'(\d{1,3})\s*(?:%|percent)', raw_text, re.I)
-        if percent_match:
-            extracted["percentage"] = percent_match.group(1)
-        else:
-            # Fallback regex for "40 PERCENT" or similar
-            nums = re.findall(r'(\d{2})', raw_text)
-            if nums:
-                # Often the disability percentage is a round or significant number in the text
-                valid_percents = [n for n in nums if 40 <= int(n) <= 100]
-                if valid_percents: extracted["percentage"] = valid_percents[0]
+        disability_details = extract_disability_certificate_details(raw_text)
+        extracted = {
+            "name": "",
+            "percentage": disability_details["disability_percentage"],
+            "disability_type": disability_details["disability_type"],
+        }
+
+        if not disability_details["is_disability_certificate"]:
+            return jsonify({
+                "status": "Rejected",
+                "error": "The uploaded document does not contain disability certificate details."
+            }), 200
 
         # 2. Extract Name (Structural Match)
         lines = [l.strip() for l in raw_text.split('\n') if l.strip()]
@@ -1058,29 +1152,20 @@ def upload_disability_certificate():
                     extracted["name"] = candidate
                     break
         
-        # Cross-Verification
+        # Name mismatches are informative only. Eligibility is based on the
+        # verified disability details printed on the certificate.
         mismatches = []
-        score = 0
-        
-        # Name Check
         if user_input_name and extracted["name"]:
             if clean_val_no_space(user_input_name) in clean_val_no_space(extracted["name"]) or \
                clean_val_no_space(extracted["name"]) in clean_val_no_space(user_input_name):
-                score += 50
+                pass
             else:
                 mismatches.append(f"Name mismatch: Card says '{extracted['name']}'")
-        
-        # Percentage Check
-        if user_input_percent and extracted["percentage"]:
-            try:
-                if int(extracted["percentage"]) >= int(user_input_percent):
-                    score += 50
-                else:
-                    mismatches.append(f"Percentage mismatch: Card says {extracted['percentage']}%")
-            except ValueError:
-                pass
 
-        status = "Verified" if score >= 90 else ("Partially Verified" if score >= 40 else "Rejected")
+        if user_input_percent and extracted["percentage"] and str(user_input_percent) != extracted["percentage"]:
+            mismatches.append(f"Percentage corrected to {extracted['percentage']}% from the certificate")
+
+        status = "Verified" if extracted["percentage"] else "Partially Verified"
 
         # Update User in DB if user_id exists
         if user_id and user_id != 'undefined':
@@ -1091,7 +1176,8 @@ def upload_disability_certificate():
                     "status": status,
                     "extracted_data": extracted,
                     "file_path": path,
-                    "verified_at": datetime.now()
+                    "verified_at": datetime.datetime.utcnow(),
+                    "is_disabled": True,
                 }}}
             )
 

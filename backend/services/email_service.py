@@ -324,7 +324,7 @@ def send_otp_email(recipient_email: str, otp_code: str, purpose: str = "document
         return True
     except Exception as exc:
         logger.error(
-            "[EMAIL] Failed to send OTP (type=%s, message=%s)",
+            "[EMAIL] Failed to send OTP (type=%s, error=%s)",
             exc.__class__.__name__,
             _sanitize_error_message(str(exc)),
         )
